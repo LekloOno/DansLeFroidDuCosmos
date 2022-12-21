@@ -35,9 +35,10 @@ class Main extends Program {
         }
 
         double randomInRange(double a, double r){
+            //Returns a value randomly modified within a given r range
             return lerp(a-r, a+r, random());
         }
-        /*
+        /* Math module explanations
         Some of the math module's functions are used in the program.
         Here are some proposals for implementing these manually, in case it wasn't authorized to use the module.
 
@@ -278,10 +279,9 @@ class Main extends Program {
     final int DEF_SYS_YDIMENSION = 50;
 
     SysObject[][] SYS_generateSystem(){
-        //Default generation of a system
-
-
-        //Dimensions, contained objects and positions.
+        /*Default generation of a system
+        dimensions, contained objects and positions.
+        */
         SysObject[][] system = new SysObject[DEF_SYS_YDIMENSION][DEF_SYS_XDIMENSION];
         
         for(int y = 0; y<DEF_SYS_YDIMENSION; y++){
@@ -571,6 +571,7 @@ class Main extends Program {
         return newSysObject(type, mass, r);
     }
     
+        //#region Generation consts
     final int GENPROB_VOID = 200;
     final int GENPROB_TEL = 6;
     final int GENPROB_GAS = 6;
@@ -579,6 +580,7 @@ class Main extends Program {
     final int GENPROB_STA = 3;
 
     final double GENPROB_AV = GENPROB_VOID+GENPROB_TEL+GENPROB_GAS+GENPROB_ICE+GENPROB_NEB+GENPROB_STA;
+        //#endregion
 
     SysObject newSysObject(){
         //Random Object generation
@@ -756,7 +758,16 @@ class Main extends Program {
         }
 
         Card newCard(String[] lines, Vector2 dim, boolean resize){
-            //if resize is true, returns a newCard with the correct size
+            /*
+            if resize is true, returns a newCard with resized String[] lines according to Vector2 dim
+            otherwise, just use the simple constructor with lines and dim.
+
+            It will resize the lines[] array, by -
+                  resizing each line so every length(lines[l]) == dim.x
+                  adding or deleting lines in the array so length(lines) == dim.y
+            
+                  Note that added lines are still respecting the dim.x size, and are full of " " characters
+            */
             if(resize){
                 String[] resizedLines = new String[dim.y];
 
@@ -791,10 +802,9 @@ class Main extends Program {
 
         final String HORIZ_SEPARATOR = "_"; 
         String HUD_DisplayCardCluster(Card[][] cards){
-            //Must be used on a normalized cluster
+            //MUST be used on a normalized cluster
             String s = "";
             Card[][] normalized = HUD_NormalizeCardCluster(cards);
-            //Card[][] normalized = cards;
             String separator = new String(new char[(cards[0][0].dimension.x + length(VERT_SEPARATOR))*length(normalized[0])-length(VERT_SEPARATOR)]).replace("\0", HORIZ_SEPARATOR);
             
             for(int y = 0; y < length(normalized); y ++){
@@ -807,7 +817,10 @@ class Main extends Program {
 
         final String VERT_SEPARATOR = " | ";
         String HUD_DisplayCardLine(Card[] cards){
-            //Must be used on a normalized line
+            /* MUST be used on a normalized line
+            Display a line of cards.
+            
+            */
             String s = "";
             for(int y = 0; y<length(cards[0].lines); y++){
                 String line = "";    
@@ -834,10 +847,10 @@ class Main extends Program {
         }
 
         int[][] HUD_GetTileNormalizedDimensions(Card[][] cards){
-            //Normalize every column and lines of the cards cluster to the largests ones
-            //return[0] are the max tiles lengths of tile in the x (return[0][x]) column
-            //return[1] are the max tiles heights of tile in the y (return[1][y]) line
-            
+            /* Normalize every column and lines of the card cluster to the largests ones so that every card can fit in a grid
+            return[0] are the max tiles lengths of tile in the x (return[0][x]) column
+            return[1] are the max tiles heights of tile in the y (return[1][y]) line
+            */
             int[][] lineCol = new int[2][];
             Vector2 clusterDimensions = HUD_GetCardClusterDimension(cards);
             lineCol[1] = new int[clusterDimensions.y];
@@ -854,6 +867,8 @@ class Main extends Program {
         }
     
         Vector2 HUD_GetCardClusterDimension(Card[][] cards){
+            /* Returns the dimensions of the card cluster. It will take the largest line in the cluster as the x parameter.
+             */
             Vector2 v = newVector2(0,length(cards));
             for(int y = 0; y<length(cards); y++){
                 v.x = Math.max(v.x, length(cards[y]));
@@ -905,6 +920,7 @@ class Main extends Program {
     
     //#endregion
 
+    /*
     //Object Macro
     //Object Display =
     //          Display infos
@@ -922,7 +938,7 @@ class Main extends Program {
     //              #6 - ..
 
     //              
-
+    
     
 
 
@@ -936,7 +952,7 @@ class Main extends Program {
     //  Process the action
 
     //3 - Else - display void infos, eventually a random tip about the game/universe
-
+    */
     Player player;
     Player player2;
     Player player3;

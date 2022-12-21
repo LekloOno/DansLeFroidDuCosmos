@@ -1,4 +1,8 @@
 enum ObjectLabel{
+    /*
+    Object Label represents the type of a celestial/system object.
+    It is mostly a functional tool, to process interactions, but also into the display of objects.
+     */
     Telluric("Planète Tellurique",'o'),     //Only contains Iron
     Gasgiant("Géante Gazeuse", 'O'),        //Only contains Hydrogen
     Icegiant("Planète de glace", 'o'),      //Contains Hydrogen and Oxygen
@@ -9,6 +13,16 @@ enum ObjectLabel{
     Void("Vide intersidéral", ' '),
     Undetermined("?",'?');
 
+    /* Technically some oop here, it was just much much much more convenient
+    Nonetheless, it could be recreated with -
+        - a "String OL_displayType(ObjectLabel)" function :
+            which just compares the label to the differents ones, and returns the appropriated displayType string.
+        - a "char OL_sprite(ObjectLabel)" function :
+            which do the same for sprites.
+
+    Instead of calling objectlabel.displayType, we would then call OL_displayType(objectlabel)
+    Same operation for sprites.
+    */
     final String displayType;
 
     final char sprite;
@@ -22,11 +36,7 @@ enum ObjectLabel{
 class ObjectType {
     ObjectLabel type;
 
-    //String subType;
     String description;
     //SysObject[] moons;
     //..
-
-    
-    //Function to convert a db into a ObjectType[]
 }

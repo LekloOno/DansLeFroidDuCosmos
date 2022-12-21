@@ -1,30 +1,15 @@
 class SysObject {
-    //Vector2 pos;
-    boolean visited;
-    boolean approached;
-
-    String name;
-    ObjectType type;
-    double mass;
-    int landingCost;
-    double landingRisks;           //Not an explicit value
-    double approachRisks;          //Not an explicit value
-    int[] availableResources;
     /*
-    Such as
-    [0] = FE
-    [1] = Hydrogen
-    [2] = Oxygen
-    */
+    Represents a celestial object in a system. 
+     */
+    boolean visited;                //true if the player has already visited the position of the object.
+    boolean approached;             //true if the player has already approached or landed on the object.
+
+    String name;                    //Non mandatory, the type displayType will be used instead if it is null. Will be used to create specific objects.
+    ObjectType type;                //See ObjectType.java
+    double mass;                    //Will influence the landing and approach risks, as well as the starting available resources.
+    int landingCost;                //Equivalent to the amount of Hydrogen required.
+    double landingRisks;            //Not an explicit value.
+    double approachRisks;           //Not an explicit value.
+    int[] availableResources;       //See region RES | Resources in Main.java       The contained resources of the object.
 }
-
-
-/*
-Position,visited,approched,typeID,mass,availableResources
-
-typeID refers to a type in ObjectTypes.csv
-
-LandingCost, risks, and approach risks aren't stored, and will be computed again when loading
-
-
-*/
