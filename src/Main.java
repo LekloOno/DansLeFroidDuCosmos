@@ -1440,47 +1440,50 @@ class Main extends Program {
         } else if(equals(input, "4")){
             GMP_ManageShip();
         } else if(Admin()){
-            String[] params = input.split(" ");
-            if(equals(params[0], "log")) {
-                if(equals(params[1],"maxhps")){
-                    logCache = ""+player.ship.MaxHPs;
-                } else if(equals(params[1], "hps")){
-                    logCache = ""+player.ship.HPs;
-                } else if(equals(params[1], "sight")){
-                    logCache = ""+player.ship.SightRange;
-                }
-            } else if(equals(params[0], "set")){
-                if(isNumeric(params[2])){
-                    int setVal = Integer.parseInt(params[2]);
-                    if(equals(params[1], "fe")){
-                        player.ownedResources[0] = setVal;
-                        logCache = "Iron";
-                    } else if(equals(params[1], "h")){
-                        player.ownedResources[1] = setVal;
-                        logCache = "Hydrogen";
-                    } else if(equals(params[1], "o")){
-                        player.ownedResources[2] = setVal;
-                        logCache = "Oxygen";
-                    } else if(equals(params[1], "sight")){
-                        player.ship.SightRange = setVal;
-                        logCache = "Sight";
-                    }
-                } else if(INPUT_isValidCoord(params[2], sys_current)){
-                    Vector2 coord = INPUT_inputToVector2(params[2]);
-                    if(equals(params[1], "pPos")){
-                        player.pos = coord;
-                        logCache = "Player position";
-                    }
-                }
-                if(equals(logCache, "")){
-                    logCache = "Error in the input";
-                } else{
-                    logCache = "Successfully set " + logCache;
-                }
-                
-            }
+            GMP_adminConsole(input.split(" "));
         }
         GMP_system();
+    }
+
+    void GMP_adminConsole(String[] params){
+        if(equals(params[0], "log")) {
+            if(equals(params[1],"maxhps")){
+                logCache = ""+player.ship.MaxHPs;
+            } else if(equals(params[1], "hps")){
+                logCache = ""+player.ship.HPs;
+            } else if(equals(params[1], "sight")){
+                logCache = ""+player.ship.SightRange;
+            }
+        } else if(equals(params[0], "set")){
+            if(isNumeric(params[2])){
+                int setVal = Integer.parseInt(params[2]);
+                if(equals(params[1], "fe")){
+                    player.ownedResources[0] = setVal;
+                    logCache = "Iron";
+                } else if(equals(params[1], "h")){
+                    player.ownedResources[1] = setVal;
+                    logCache = "Hydrogen";
+                } else if(equals(params[1], "o")){
+                    player.ownedResources[2] = setVal;
+                    logCache = "Oxygen";
+                } else if(equals(params[1], "sight")){
+                    player.ship.SightRange = setVal;
+                    logCache = "Sight";
+                }
+            } else if(INPUT_isValidCoord(params[2], sys_current)){
+                Vector2 coord = INPUT_inputToVector2(params[2]);
+                if(equals(params[1], "pPos")){
+                    player.pos = coord;
+                    logCache = "Player position";
+                }
+            }
+            if(equals(logCache, "")){
+                logCache = "Error in the input";
+            } else{
+                logCache = "Successfully set " + logCache;
+            }
+            
+        }
     }
 
     final double TEMPWINDOW = 1.8;
@@ -1512,6 +1515,7 @@ class Main extends Program {
         GMP_system();
     }
 
+    //#region Ship Management
     void GMP_ManageShip(){
         win_botLeft = HUD_shipManagementMenu();
 
@@ -1521,90 +1525,107 @@ class Main extends Program {
 
         if(equals(input, "1")){
             //REPAIR
-            win_botLeft = HUD_shipRepairMenu();
-            GMP_displayHUD();
-
-            input = readString();
-            int feAmount = INPUT_repairInputToFe(input);
-            println(feAmount);
-            int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
-            if(feAmount>0){
-                win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
-                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
-
-                GMP_displayHUD();
-
-                input = readString();
-
-                if(confirm(input)){
-                    if(!PLAYER_repair(player, feAmount)){
-                        GMP_insufficientFE(feAmount);
-                    }
-                }
-            }
+            GMP_shipRepair();    
         } else if(equals(input, "2")){
             //REINFORCE
-            win_botLeft = HUD_shipReinforceMenu();
-            GMP_displayHUD();
-
-            input = readString();
-            if(isNumeric(input)){
-                int feAmount = Integer.parseInt(input);
-                win_botLeft = HUD_shipReinforceConfirmMenu();
-                win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
-                GMP_displayHUD();
-
-                input = readString();
-
-                if(confirm(input)){    
-                    if(!PLAYER_reinforce(player, feAmount)){
-                        GMP_insufficientFE(feAmount);
-                    }
-                }
-            }
+            GMP_shipReinforce();
         } else if(equals(input, "3")){
             //TELESCOPE UPGRADE
-            win_botLeft = HUD_shipTelescopeUpgradeMenu();
-            GMP_displayHUD();
-
-            input = readString();
-            if(isNumeric(input)){
-                int feAmount = Integer.parseInt(input)*SHIP_SIGHTTOIRON;
-                win_botLeft = HUD_shipTelescopeUpgradeConfirmMenu();
-                win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
-                GMP_displayHUD();
-
-                input = readString();
-
-                if(confirm(input)){
-                    if(!PLAYER_upgradeTelescope(player, feAmount)){
-                        GMP_insufficientFE(feAmount);
-                    }
-                }
-            }
+            GMP_shipTelescopeUpgrade();
         } else if(equals(input, "4")){
             //STORAGE UPGRADE
-            win_botLeft = HUD_shipStorageUpgradeMenu();
-            GMP_displayHUD();
-
-            input = readString();
-            if(isNumeric(input)){
-                int feAmount = Integer.parseInt(input)*SHIP_STORAGETOIRON;
-                win_botLeft = HUD_shipStorageUpgradeConfirmMenu();
-                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, 0, Integer.parseInt(input));
-                GMP_displayHUD();
-
-                input = readString();
-
-                if(confirm(input)){
-                    if(!PLAYER_upgradeStorage(player,feAmount)){
-                        GMP_insufficientFE(feAmount);
-                    }
-                }
-            }
+            GMP_shipStorageUpgrade();
         }
         GMP_system();
     }
+
+    void GMP_shipRepair(){
+        win_botLeft = HUD_shipRepairMenu();
+        GMP_displayHUD();
+
+        input = readString();
+        int feAmount = INPUT_repairInputToFe(input);
+        println(feAmount);
+        int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
+        if(feAmount>0){
+            win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
+            win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
+
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(confirm(input)){
+                if(!PLAYER_repair(player, feAmount)){
+                    GMP_insufficientFE(feAmount);
+                }
+            }
+        }
+    }
+
+    void GMP_shipReinforce(){
+        win_botLeft = HUD_shipReinforceMenu();
+        GMP_displayHUD();
+
+        input = readString();
+        if(isNumeric(input)){
+            int feAmount = Integer.parseInt(input);
+            win_botLeft = HUD_shipReinforceConfirmMenu();
+            win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(confirm(input)){    
+                if(!PLAYER_reinforce(player, feAmount)){
+                    GMP_insufficientFE(feAmount);
+                }
+            }
+        }
+    }
+
+    void GMP_shipTelescopeUpgrade(){
+        win_botLeft = HUD_shipTelescopeUpgradeMenu();
+        GMP_displayHUD();
+
+        input = readString();
+        if(isNumeric(input)){
+            int feAmount = Integer.parseInt(input)*SHIP_SIGHTTOIRON;
+            win_botLeft = HUD_shipTelescopeUpgradeConfirmMenu();
+            win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(confirm(input)){
+                if(!PLAYER_upgradeTelescope(player, feAmount)){
+                    GMP_insufficientFE(feAmount);
+                }
+            }
+        }
+    }
+
+    void GMP_shipStorageUpgrade(){
+        win_botLeft = HUD_shipStorageUpgradeMenu();
+        GMP_displayHUD();
+
+        input = readString();
+        if(isNumeric(input)){
+            int feAmount = Integer.parseInt(input)*SHIP_STORAGETOIRON;
+            win_botLeft = HUD_shipStorageUpgradeConfirmMenu();
+            win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, 0, Integer.parseInt(input));
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(confirm(input)){
+                if(!PLAYER_upgradeStorage(player,feAmount)){
+                    GMP_insufficientFE(feAmount);
+                }
+            }
+        }
+    }
+    //#endregion
 
     void GMP_displayHUD(){
         println(HUD_DisplayCardCluster(new Card[][]{{win_topLeft, win_topRight},{win_botLeft, win_botRight}}));
