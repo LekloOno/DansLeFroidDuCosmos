@@ -794,25 +794,27 @@ class Main extends Program {
     //#region SHIP
 
     final int SHIP_DEF_INITHPS = 100;
+    final int SHIP_DEF_INITSTOR = 80;
     final double SHIP_DEF_INITSIGHT = 12.5;
     final double SHIP_DEF_INITEFF = 1;
 
     Ship initShip(){
-        return newShip(SHIP_DEF_INITHPS, SHIP_DEF_INITSIGHT, SHIP_DEF_INITEFF);
+        return newShip(SHIP_DEF_INITHPS, SHIP_DEF_INITSIGHT, SHIP_DEF_INITSTOR, SHIP_DEF_INITEFF);
     }
 
     Ship newShip(){
-        return newShip(0, 0, 0);
+        return newShip(0, 0, 0, 0);
     }
 
-    Ship newShip(int _maxHps, double _sightRange, double _efficiency){
-        return newShip(_maxHps, _maxHps, _sightRange, _efficiency);
+    Ship newShip(int _maxHps, double _sightRange, int _storage, double _efficiency){
+        return newShip(_maxHps, _maxHps, _storage, _sightRange, _efficiency);
     }
 
-    Ship newShip(int _maxHps, int _currentHps, double _sightRange, double _efficiency){
+    Ship newShip(int _maxHps, int _currentHps, int _storage, double _sightRange, double _efficiency){
         Ship s = new Ship();
         s.MaxHPs = _maxHps;
         s.HPs = _currentHps;
+        s.Storage = _storage;
         s.SightRange = _sightRange;
         s.Efficiency = _efficiency;
         return s;
@@ -1113,6 +1115,9 @@ class Main extends Program {
         final String STATUS_UNIT = " u";
 
         Card HUD_Status(int[] preview){
+            int totalPrev = 0;
+            int totalRes = 0;
+
             String[] res = new String[]{
                 player.ownedResources[0]+"",
                 player.ownedResources[1]+"",
@@ -1120,6 +1125,8 @@ class Main extends Program {
             };
 
             for(int i = 0; i<length(res); i++){
+                totalPrev += preview[i];
+                totalRes += player.ownedResources[i];
                 if(preview[i] != 0){
                     res[i] = player.ownedResources[i] - preview[i] + "(-" + preview[i] + ")";
                 }
@@ -1130,10 +1137,12 @@ class Main extends Program {
                 setAsTableLine(new String[]{"Fer :", res[0], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Hydrogène :", res[1], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Oxygène :", res[2], STATUS_UNIT}, STATUS_COLWIDTH),
+                "",
+                "Espace de stockage : " + (totalRes-totalPrev) + "/" + player.ship.Storage,
                 setAsTableLine(new String[]{"____","____","____"}, STATUS_COLWIDTH),
                 "",
                 "Vaisseau - ",
-                "Etat de la coque :  " + player.ship.HPs/player.ship.MaxHPs*100 + " %"
+                "Etat de la coque   :  " + player.ship.HPs/player.ship.MaxHPs*100 + " %"
             };
 
             return newCard(lines, newVector2(50, length(lines)), true);
