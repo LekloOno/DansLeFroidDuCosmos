@@ -10,6 +10,39 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
+        boolean isNumeric(char c){
+            return c <= '9' && c >= '0';
+        }
+
+        boolean isValidCoord(String coord){
+            int i = 1;
+            int sepCount = 0;
+            while(i<length(coord)-1 && (isNumeric(charAt(coord, i)) || charAt(coord, i) == ':' || charAt(coord, i) == ';') && sepCount < 2){
+                if(charAt(coord, i) == ':' || charAt(coord, i) == ';'){
+                    sepCount ++;
+                }
+                i++;
+            }
+    
+            return length(coord)>=3 && isNumeric(charAt(coord, 0)) && isNumeric(charAt(coord, i)) && sepCount < 2;
+        }
+
+        Vector2 inputToVector2(String coord){
+            int i = 0;
+            while(i<length(coord) && charAt(coord, i) != ':' && charAt(coord, i) != ';'){
+                i++;
+            }
+            return newVector2(Integer.parseInt(substring(coord, 0, i)), Integer.parseInt(substring(coord, i+1, length(coord))));
+        }
+
+        String setAsTableLine(String[] line, int colWidth){
+            String s = "";
+            for(int i = 0; i<length(line); i ++){
+                s += line[i] + new String(new char[Math.max(colWidth-length(line[i]),0)]).replace("\0", " ");
+            }
+
+            return s;
+        }
 
         String[] combineArrays(String[][] arrays){
             int len = 0;
@@ -270,19 +303,16 @@ class Main extends Program {
         return p;
     }
 
-    void PLAYER_move(Player p, Vector2 b){
+    boolean PLAYER_move(Player p, Vector2 b){
         int cost = (int)Math.ceil(SHIP_hydrogenRequired(VECTOR2_distance(p.pos, b)));
-        println("Le déplacement indiqué coûtera " + cost + " unités d'hydrogène. Continuer ? oui/non");
-        if(readString() == "oui"){
-            if(cost <= p.ownedResources[1]){
-                p.ownedResources[1] -= cost;
-                p.pos = b;
-            }
-            else
-            {
-                println("Hydrogène insuffisant !");
-            }
+
+        boolean canMove = cost <= p.ownedResources[1];
+        if(canMove){
+            p.ownedResources[1] -= cost;
+            p.pos = b;
         }
+        
+        return canMove;
     }
 
     void PLAYER_repair(Player p)
@@ -645,56 +675,6 @@ class Main extends Program {
         }
     }
 
-    Card HUD_SYS_mainMenu(SysObject o){
-        String orbite = "Entrer en orbite";
-        if(o.type.type == ObjectLabel.Void){
-            orbite = "-";
-        }
-        String[] actions = new String[]{
-            "Save & Quit",
-            "Nouvelle Destination",
-            "Nouvelle Observation",
-            orbite,
-            "Gestion du vaisseau",
-            "Quitter le système (pas encore implémenté)"
-        };
-
-        String[] callAction = HUD_menuCallAction("- Entrez le numéros de l'action à faire -", length(actions));
-
-        String[] lines = combineArrays(new String[][]{HUD_numberList(actions), callAction});
-
-        return newCard(lines, newVector2(50, length(lines)), true);
-    }
-
-    final int HUD_MENU_MINCALLPOS = 9;
-    String[] HUD_menuCallAction(String callAction, int prevLen){
-        //Returns the call part of menus, with a minimum amount of filling lines
-        String[] call = new String[]{"", callAction};
-        String[] fill = new String[Math.max(HUD_MENU_MINCALLPOS - prevLen - 1, 0)];
-        for(int i = 0; i<length(fill); i++){
-            fill[i] = "";
-        }
-        
-        return combineArrays(new String[][]{fill, call});
-    }
-
-    Card HUD_moveMenu(){
-        String[] lines = new String[]{
-            "0. Annuler",
-            "",
-            "- Entrez les coordonnées de destination (x:y) -"
-        };
-
-        return newCard(lines, newVector2(50, length(lines)), true);
-    }
-
-    String[] HUD_numberList(String [] list){
-        for(int i = 0; i<length(list); i++){
-            list[i] = i + ". " + list[i];
-        }
-        return list;
-    }
-
     void SO_mainMenu(SysObject o, Player p, int input){
         //Process the action
         /*
@@ -841,7 +821,7 @@ class Main extends Program {
 
     int SHIP_hydrogenRequired(double distance){
         //Convert a given distance into a Hydrogen cost
-        return -1;
+        return  (int)Math.ceil(Math.pow(distance,0.8)*4);
     }
 
     int SHIP_ironRequired(int HPs){
@@ -1065,8 +1045,174 @@ class Main extends Program {
         }
         //#endregion
     
+        //#region SYSTEM
+
+        Card HUD_SYS_mainMenu(SysObject o){
+            String orbite = "Entrer en orbite";
+            if(o.type.type == ObjectLabel.Void){
+                orbite = "-";
+            }
+            String[] actions = new String[]{
+                "Save & Quit",
+                "Nouvelle Destination",
+                "Nouvelle Observation",
+                orbite,
+                "Gestion du vaisseau",
+                "Quitter le système (pas encore implémenté)"
+            };
+            return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
+        }
+    
+        final int HUD_MENU_MINCALLPOS = 9;
+        final int HUD_MENU_LENGTH = 65;
+        String[] HUD_menuCallAction(String callAction, int prevLen){
+            //Returns the call part of menus, with a minimum amount of filling lines
+            String[] call = new String[]{"", callAction};
+            String[] fill = new String[Math.max(HUD_MENU_MINCALLPOS - prevLen - 1, 0)];
+            for(int i = 0; i<length(fill); i++){
+                fill[i] = "";
+            }
+            
+            return combineArrays(new String[][]{fill, call});
+        }
+    
+        Card HUD_moveMenu(){
+            String[] actions = new String[]{
+                "Annuler"
+            };
+            return HUD_menuCard(actions, "- Entrez les coordonnées de destination (x:y) -");
+        }
+
+        Card HUD_confirmMoveMenu(Vector2 dest){
+            String[] actions = new String[]{
+                "Annuler",
+                "Confirmer"
+            };
+            double distance = VECTOR2_distance(player.pos, dest);
+            String call = "- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -";
+            return HUD_menuCard(actions, call);
+        }
+
+        Card HUD_insufficientHydrogen(int cost){
+            String[] lines = new String[]{
+                "Hydrogène insuffisant.",
+                "Le trajet nécessite " + cost + " unités d'hydrogène.",
+                "-",
+                "Annulation .."
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        Card HUD_menuCard(String[] actions, String callAction){
+            String[] lines = combineArrays(new String[][]{HUD_numberList(actions), HUD_menuCallAction(callAction, length(actions))});
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        final int STATUS_COLWIDTH = 15;
+        final String STATUS_UNIT = " u";
+
+        Card HUD_Status(int[] preview){
+            String[] res = new String[]{
+                player.ownedResources[0]+"",
+                player.ownedResources[1]+"",
+                player.ownedResources[2]+""
+            };
+
+            for(int i = 0; i<length(res); i++){
+                if(preview[i] != 0){
+                    res[i] = player.ownedResources[i] - preview[i] + "(-" + preview[i] + ")";
+                }
+            }
+
+            String[] lines = new String[]{
+                "Resources -",
+                setAsTableLine(new String[]{"Fer :", res[0], STATUS_UNIT}, STATUS_COLWIDTH),
+                setAsTableLine(new String[]{"Hydrogène :", res[1], STATUS_UNIT}, STATUS_COLWIDTH),
+                setAsTableLine(new String[]{"Oxygène :", res[2], STATUS_UNIT}, STATUS_COLWIDTH),
+                setAsTableLine(new String[]{"____","____","____"}, STATUS_COLWIDTH),
+                "",
+                "Vaisseau - ",
+                "Etat de la coque :  " + player.ship.HPs/player.ship.MaxHPs*100 + " %"
+            };
+
+            return newCard(lines, newVector2(50, length(lines)), true);
+        }
+
+        Card HUD_Status(){
+            return HUD_Status(emptyResources());
+        }
+    
+        String[] HUD_numberList(String [] list){
+            for(int i = 0; i<length(list); i++){
+                list[i] = i + ". " + list[i];
+            }
+            return list;
+        }
+
+        //#endregion
     //#endregion
 
+    //#region GMP   | GAMEPLAY
+
+    void GMP_system(){
+        win_topLeft = SYS_playerVisionToCard(sys_current, player);
+        win_topRight = HUD_SO_displayInfosCard(sys_current[player.pos.y][player.pos.x], player);
+        win_botLeft = HUD_SYS_mainMenu(sys_current[player.pos.y][player.pos.x]);
+        win_botRight = HUD_Status();
+
+        GMP_displayHUD();
+
+        input = readString();
+        if(equals(input,"1")){
+            GMP_move();
+        }
+    }
+
+    final double TEMPWINDOW = 1.8;
+    void GMP_move(){
+        win_botLeft = HUD_moveMenu();
+
+        GMP_displayHUD();
+
+        input = readString();
+
+        if(equals(input,"0")){
+            GMP_system();
+        } else if(isValidCoord(input)){
+            Vector2 inputCoord = inputToVector2(input);
+            int cost = SHIP_hydrogenRequired(VECTOR2_distance(player.pos, inputCoord));
+            win_botLeft = HUD_confirmMoveMenu(inputCoord);
+            win_botRight = HUD_Status(new int[]{0, cost, 0});
+
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(equals(input, "1")){
+                if(PLAYER_move(player, inputCoord)){
+                    GMP_system();
+                } else {
+                    win_botLeft = HUD_insufficientHydrogen(cost);
+                    GMP_displayHUD();
+                    long startTime = System.currentTimeMillis();
+                    while(System.currentTimeMillis() < startTime + (TEMPWINDOW * 1000)){
+
+                    }
+                    GMP_system();
+                }
+            } else {
+                GMP_system();
+            }
+        }
+        input = readString();
+    }
+
+    void GMP_displayHUD(){
+        println(HUD_DisplayCardCluster(new Card[][]{{win_topLeft, win_topRight},{win_botLeft, win_botRight}}));
+    }
+
+    //#endregion
     /*
     //Object Macro
     //Object Display =
@@ -1100,25 +1246,36 @@ class Main extends Program {
 
     //3 - Else - display void infos, eventually a random tip about the game/universe
     */
+    String input;
+
     Player player;
     Player player2;
     Player player3;
 
+    Card win_topLeft;
+    Card win_topRight;
+    Card win_botLeft;
+    Card win_botRight;
+
+    SysObject[][] sys_current;
+
     void algorithm() {
         println("Entrez votre nom de joueur aa: ");
         player = initPlayer(readString(), newVector2(20, 16));
+        sys_current = SYS_generateSystem();
+        /*
         player2 = initPlayer("aa", newVector2(18, 22));
         player3 = initPlayer("aaa", newVector2(32, 14));
         player3.ship.SightRange = 5;
         player2.ship.SightRange = 8.5;
         //HUD_SO_displayInfosCard(newSysObject(newObjectType(ObjectLabel.Tellurique, ""), 20, null), null);
-        SysObject[][] system = SYS_generateSystem();/* 
+        SysObject[][] system = SYS_generateSystem();
         SysObject[][] system2 = SYS_generateSystem();
-        SysObject[][] system3 = SYS_generateSystem();*/
-        Card sysCard = SYS_playerVisionToCard(system, player);/*
+        SysObject[][] system3 = SYS_generateSystem();
+        Card sysCard = SYS_playerVisionToCard(system, player);
         Card sysCard2 = SYS_playerVisionToCard(system2, player3);
         Card sysCard3 = SYS_playerVisionToCard(system3, player);
-        Card sysCard4 = SYS_playerVisionToCard(system3, player2);*/
+        Card sysCard4 = SYS_playerVisionToCard(system3, player2);
         Card surrounding = HUD_SO_displayInfosCard(system[player.pos.y][player.pos.y], player);
 
         Card Actions = newCard(new String[]{""," Sélectionnez les coordonnées d'observation."}, newVector2(50, 15), true);
@@ -1135,7 +1292,8 @@ class Main extends Program {
         //    println(info.lines[i]);
         //}
         //hud = new Card[][]{{HUD_SO_displayInfosCard(system[ySelect][xSelect], player)}};
-        println(HUD_DisplayCardCluster(hud));
+        println(HUD_DisplayCardCluster(hud));*/
+        GMP_system();
         readInt();
     }
 }
