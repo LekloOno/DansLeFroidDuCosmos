@@ -11,6 +11,25 @@ class Main extends Program {
     //#region GLOBAL
         //Global - core operators and tools
 
+        String[] combineArrays(String[][] arrays){
+            int len = 0;
+            for(int i = 0; i<length(arrays); i++){
+                len += length(arrays[i]);
+            }
+            String[] a = new String[len];
+            
+            int lines = 0;
+    
+            for(int i = 0; i<length(arrays); i++){    
+                for(int j = 0; j<length(arrays[i]); j++){
+                    a[lines] = arrays[i][j];
+                    lines ++;
+                }
+            }
+    
+            return a;
+        }
+
         //#region MATHS
         double clamp(double v, double min, double max){
             return Math.max(Math.min(v, max), min);
@@ -301,7 +320,7 @@ class Main extends Program {
     final int XAXIS_WIDTH = 3;
     final int YAXIS_WIDTH = 3;
 
-    Card SYS_systemToInt(SysObject[][] system, Player p){
+    Card SYS_playerVisionToCard(SysObject[][] system, Player p){
         //Returns a string to display which represents a system
         Card card = new Card();
         int range = 1+(int)(p.ship.SightRange * 2);
@@ -311,8 +330,8 @@ class Main extends Program {
         card.dimension = newVector2(horizRange, range);
         card.lines = new String[range];
         
-        int sysFirstX = p.pos.x - XMARGIN - (int)p.ship.SightRange;
-        int sysFirstY = p.pos.y - YMARGIN - (int)p.ship.SightRange;
+        int sysFirstX = Math.max(p.pos.x - XMARGIN - (int)p.ship.SightRange, 0);
+        int sysFirstY = Math.max(p.pos.y - YMARGIN - (int)p.ship.SightRange, 0);
 
         String line;
         for(int y = 0; y<range-XAXIS_WIDTH; y++){
@@ -572,14 +591,13 @@ class Main extends Program {
     }
     
         //#region Generation consts
-    final int GENPROB_VOID = 200;
+    final int GENPROB_VOID = 600;
     final int GENPROB_TEL = 6;
     final int GENPROB_GAS = 6;
     final int GENPROB_ICE = 5;
-    final int GENPROB_NEB = 3;
-    final int GENPROB_STA = 3;
+    final int GENPROB_STA = 1;
 
-    final double GENPROB_AV = GENPROB_VOID+GENPROB_TEL+GENPROB_GAS+GENPROB_ICE+GENPROB_NEB+GENPROB_STA;
+    final double GENPROB_AV = GENPROB_VOID+GENPROB_TEL+GENPROB_GAS+GENPROB_ICE+GENPROB_STA;
         //#endregion
 
     SysObject newSysObject(){
@@ -602,10 +620,6 @@ class Main extends Program {
         if(rng < prob/GENPROB_AV) {
             return newSysObject(ObjectLabel.Icegiant);
         }
-        prob += GENPROB_NEB;
-        if(rng < prob/GENPROB_AV) {
-            return newSysObject(ObjectLabel.Nebula);
-        }
         return newSysObject(ObjectLabel.Star);
     }   
 
@@ -627,12 +641,110 @@ class Main extends Program {
         while(input != 0){
             //println(HUD_SO_displayInfosCard(o, p) + "\n" + SO_displayAction(o, p));
             input = readInt();
-            SO_processAction(o, p, input);
+            SO_mainMenu(o, p, input);
         }
     }
 
-    void SO_processAction(SysObject o, Player p, int input){
+    Card HUD_SYS_mainMenu(SysObject o){
+        String orbite = "Entrer en orbite";
+        if(o.type.type == ObjectLabel.Void){
+            orbite = "-";
+        }
+        String[] actions = new String[]{
+            "Save & Quit",
+            "Nouvelle Destination",
+            "Nouvelle Observation",
+            orbite,
+            "Gestion du vaisseau",
+            "Quitter le système (pas encore implémenté)"
+        };
+
+        String[] callAction = HUD_menuCallAction("- Entrez le numéros de l'action à faire -", length(actions));
+
+        String[] lines = combineArrays(new String[][]{HUD_numberList(actions), callAction});
+
+        return newCard(lines, newVector2(50, length(lines)), true);
+    }
+
+    final int HUD_MENU_MINCALLPOS = 9;
+    String[] HUD_menuCallAction(String callAction, int prevLen){
+        //Returns the call part of menus, with a minimum amount of filling lines
+        String[] call = new String[]{"", callAction};
+        String[] fill = new String[Math.max(HUD_MENU_MINCALLPOS - prevLen - 1, 0)];
+        for(int i = 0; i<length(fill); i++){
+            fill[i] = "";
+        }
+        
+        return combineArrays(new String[][]{fill, call});
+    }
+
+    Card HUD_moveMenu(){
+        String[] lines = new String[]{
+            "0. Annuler",
+            "",
+            "- Entrez les coordonnées de destination (x:y) -"
+        };
+
+        return newCard(lines, newVector2(50, length(lines)), true);
+    }
+
+    String[] HUD_numberList(String [] list){
+        for(int i = 0; i<length(list); i++){
+            list[i] = i + ". " + list[i];
+        }
+        return list;
+    }
+
+    void SO_mainMenu(SysObject o, Player p, int input){
         //Process the action
+        /*
+        0. Save & Quit
+        1. Nouvelle Destination
+        2. Nouvelle Observation
+        3. Entrer en orbite
+        4. Gestion du vaisseau
+        (5. Quitter le système)
+
+        1 -
+        Entrez les coordonnées de destination. (x:y)
+            
+            Le déplacement en (x:y) consommera xxxx d'hydrogène.
+            Confirmer ? (y/n - oui/non)
+                        Move
+            
+        2 -
+        Entrez les coordonnées d'observation. (x:y)
+
+
+        3 - Set the approached bool to true
+            
+            0. Quitter l'orbite
+            1. Atterrir
+            (2. Extraction de fer) // Si étoile
+            (3. Extraction d'hydrogène) // Si objet à hydrogène
+
+
+                1 -
+                Le décolage et l'aterrisage consommeront xxxx d'hydrogène
+                Confirmer ? (y/n - oui/non)
+                    Si landable -
+
+                    0. Décoler
+                    1. Extraction de fer
+                    (2. Extraction d'oxygène) // Si planète de glace ou comète
+
+                    Sinon -
+
+                    (Si gazeuse) Alors que vous descendez prudemment dans l'épaisse athmosphère de la planète, vous observez tous les compteurs du vaisseau s'affoler.
+                    La pression monte en flèche, la température impressionante, vous faîtes vite demi-tour avant de ne subir plus de dommages.
+                    Votre vaisseau a subit de lourd dégâts. Il semblerait qu'atterrir sur une géante gazeuse ne soit pas une très bonne idée.
+
+                    (Si étoile) Alors que vous vous approchez de la surface de l'astre flamboyant, vous observez tous les compteurs du vaisseau s'affoler.
+                    La température monte en milliers de degrés, et avant que votre vaisseau ne commençent à fondre, vous vous arrachez à la gravité de l'étoile en catastrophe.
+                    Votre vaisseau a subit de lourd dégâts. Il semblerait qu'atterrir sur une étoile ne soit pas une très bonne idée.
+
+        */
+        
 
     }
 
@@ -800,6 +912,19 @@ class Main extends Program {
             }
         }
 
+        Card newCard(){
+            return newCard(newVector2(1, 1));
+        }
+
+        Card newCard(Vector2 dim){
+            String[] lines = new String[dim.y];
+            for(int i = 0; i<dim.y; i++){
+                lines[i] = new String(new char[dim.x]).replace("\0", " ");
+            }
+
+            return newCard(lines, dim);
+        }
+
         final String HORIZ_SEPARATOR = "_"; 
         String HUD_DisplayCardCluster(Card[][] cards){
             //MUST be used on a normalized cluster
@@ -879,33 +1004,50 @@ class Main extends Program {
         //#endregion
 
         //#region SYSTEM OBJECT
-        final int HUD_INFOCARD_LENGTH = 20;
+        final int HUD_INFOCARD_LENGTH = 50;
         final int HUD_INFOCARD_HEIGHT = 20;
 
-        Card HUD_SO_displayInfosCard(SysObject o, Player p){
+        Card HUD_SO_displayInfosCard(SysObject o, Player p, boolean select, Vector2 pos){
             //Display a card giving the available informations and actions on the given object. Line by Line (to help in building the global HUD format)
             String[] lines = new String[HUD_INFOCARD_HEIGHT];
-            lines[0] = HUD_SO_displayCardHead(o, p);
+            lines[0] = HUD_SO_displayCardHead(o, p, select, pos);
 
             int i = 1;
             while(i<HUD_INFOCARD_HEIGHT && ((i-1)*HUD_INFOCARD_LENGTH) < length(o.type.description)){
                 lines[i] = substring(o.type.description, (i-1)*HUD_INFOCARD_LENGTH, Math.min(i*HUD_INFOCARD_LENGTH, length(o.type.description)));
                 i++;
             }
+            while(i<HUD_INFOCARD_HEIGHT){
+                lines[i] = "";
+                i++;
+            }
         
-            return newCard(lines, newVector2(HUD_INFOCARD_LENGTH, HUD_INFOCARD_HEIGHT));
+            return newCard(lines, newVector2(HUD_INFOCARD_LENGTH, HUD_INFOCARD_HEIGHT), true);
         }
 
-        String HUD_SO_displayCardHead(SysObject o, Player p){
+        Card HUD_SO_displayInfosCard(SysObject o, Player p){
+            return HUD_SO_displayInfosCard(o, p, false, VECTOR2_NULL);
+        }
+
+        String HUD_SO_displayCardHead(SysObject o, Player p, boolean select, Vector2 pos){
             //Display a card header
             String head = "";
-            
-            if(p.nearbySOstatus[0]){
-                head = "En orbite sur - ";
-            } else if(p.nearbySOstatus[1]){
-                head = "A la surface de - ";
-            } else{
-                head = "A proximité de - ";
+            int posx;
+            int posy;
+            if(select){
+                posx = pos.x;
+                posy = pos.y;
+                head = "Vous observez - ";
+            } else {
+                posx = p.pos.x;
+                posy = p.pos.y;
+                if(p.nearbySOstatus[0]){
+                    head += "En orbite sur - ";
+                } else if(p.nearbySOstatus[1]){
+                    head += "A la surface de - ";
+                } else{
+                    head += "A proximité de - ";
+                }
             }
 
             if(o.name != null){
@@ -913,8 +1055,13 @@ class Main extends Program {
             }
 
             head += o.type.type.displayType;
+            head += " | x: " + posx + " y: " + posy;
 
-            return substring(head, 0, Math.min(HUD_INFOCARD_LENGTH, length(o.type.description)));
+            return substring(head, 0, Math.min(HUD_INFOCARD_LENGTH, length(head)));
+        }
+
+        String HUD_SO_displayCardHead(SysObject o, Player p){
+            return HUD_SO_displayCardHead(o, p, false, VECTOR2_NULL);
         }
         //#endregion
     
@@ -958,21 +1105,36 @@ class Main extends Program {
     Player player3;
 
     void algorithm() {
-        println("Entrez votre nom de joueur : ");
-        player = initPlayer(readString(), newVector2(20, 20));
+        println("Entrez votre nom de joueur aa: ");
+        player = initPlayer(readString(), newVector2(20, 16));
         player2 = initPlayer("aa", newVector2(18, 22));
         player3 = initPlayer("aaa", newVector2(32, 14));
         player3.ship.SightRange = 5;
         player2.ship.SightRange = 8.5;
         //HUD_SO_displayInfosCard(newSysObject(newObjectType(ObjectLabel.Tellurique, ""), 20, null), null);
-        SysObject[][] system = SYS_generateSystem();
+        SysObject[][] system = SYS_generateSystem();/* 
         SysObject[][] system2 = SYS_generateSystem();
-        SysObject[][] system3 = SYS_generateSystem();
-        Card sysCard = SYS_systemToInt(system, player);
-        Card sysCard2 = SYS_systemToInt(system2, player3);
-        Card sysCard3 = SYS_systemToInt(system3, player);
-        Card sysCard4 = SYS_systemToInt(system3, player2);
-        Card[][] hud = new Card[][]{{sysCard, sysCard2},{sysCard4, sysCard3}};
+        SysObject[][] system3 = SYS_generateSystem();*/
+        Card sysCard = SYS_playerVisionToCard(system, player);/*
+        Card sysCard2 = SYS_playerVisionToCard(system2, player3);
+        Card sysCard3 = SYS_playerVisionToCard(system3, player);
+        Card sysCard4 = SYS_playerVisionToCard(system3, player2);*/
+        Card surrounding = HUD_SO_displayInfosCard(system[player.pos.y][player.pos.y], player);
+
+        Card Actions = newCard(new String[]{""," Sélectionnez les coordonnées d'observation."}, newVector2(50, 15), true);
+        Card ac = HUD_SYS_mainMenu(system[player.pos.y][player.pos.x]);
+
+        Card[][] hud = new Card[][]{{sysCard, surrounding},{ac, newCard()}};
+        println(HUD_DisplayCardCluster(hud));
+        int xSelect = readInt();
+        int ySelect = readInt();
+        Card info = HUD_SO_displayInfosCard(system[ySelect][xSelect], player, true, newVector2(xSelect, ySelect));
+
+        hud = new Card[][]{{sysCard, surrounding},{ac, info}};
+        //for(int i = 0; i < length(info.lines); i++){
+        //    println(info.lines[i]);
+        //}
+        //hud = new Card[][]{{HUD_SO_displayInfosCard(system[ySelect][xSelect], player)}};
         println(HUD_DisplayCardCluster(hud));
         readInt();
     }
