@@ -1675,39 +1675,8 @@ class Main extends Program {
     }
 
     //#endregion
-    /*
-    //Object Macro
-    //Object Display =
-    //          Display infos
-    //          What interactions are availabe ?
-    //              display these
-    //          Call action
 
-    //Object interactions =
-    //          Process action code
-    //              #1 - Approach
-    //              #2 - Land      - 
-    //              #3 - Collect H  - always 0 if not gaz/star/..
-    //              #4 - Collect Fe - ..........
-    //              #5 - Collect O  - ..
-    //              #6 - ..
-
-    //              
-    
-    
-
-
-
-    //Any time -- display the system, ship and player infos
-
-    //1 - Player -moves to a location
-    //2 - If location != null -- Display the object card
-    //  Ask for action within available ones -- depends on the object type & approach status
-    //  Gives the potential results of the action, ask for confirmation
-    //  Process the action
-
-    //3 - Else - display void infos, eventually a random tip about the game/universe
-    */
+    //#region Game global variables
     String input;
 
     Player player;
@@ -1722,42 +1691,13 @@ class Main extends Program {
     String logCache = "";
 
     SysObject[][] sys_current;
+    //#endregion
 
     void algorithm() {
         println("Entrez votre nom de joueur aa: ");
         player = initPlayer(readString(), newVector2(20, 16));
         player.ship.HPs = 50;
         sys_current = SYS_generateSystem();
-        /*
-        player2 = initPlayer("aa", newVector2(18, 22));
-        player3 = initPlayer("aaa", newVector2(32, 14));
-        player3.ship.SightRange = 5;
-        player2.ship.SightRange = 8.5;
-        //HUD_SO_displayInfosCard(newSysObject(newObjectType(ObjectLabel.Tellurique, ""), 20, null), null);
-        SysObject[][] system = SYS_generateSystem();
-        SysObject[][] system2 = SYS_generateSystem();
-        SysObject[][] system3 = SYS_generateSystem();
-        Card sysCard = SYS_playerVisionToCard(system, player);
-        Card sysCard2 = SYS_playerVisionToCard(system2, player3);
-        Card sysCard3 = SYS_playerVisionToCard(system3, player);
-        Card sysCard4 = SYS_playerVisionToCard(system3, player2);
-        Card surrounding = HUD_SO_displayInfosCard(system[player.pos.y][player.pos.y], player);
-
-        Card Actions = newCard(new String[]{""," Sélectionnez les coordonnées d'observation."}, newVector2(50, 15), true);
-        Card ac = HUD_SYS_mainMenu(system[player.pos.y][player.pos.x]);
-
-        Card[][] hud = new Card[][]{{sysCard, surrounding},{ac, newCard()}};
-        println(HUD_DisplayCardCluster(hud));
-        int xSelect = readInt();
-        int ySelect = readInt();
-        Card info = HUD_SO_displayInfosCard(system[ySelect][xSelect], player, true, newVector2(xSelect, ySelect));
-
-        hud = new Card[][]{{sysCard, surrounding},{ac, info}};
-        //for(int i = 0; i < length(info.lines); i++){
-        //    println(info.lines[i]);
-        //}
-        //hud = new Card[][]{{HUD_SO_displayInfosCard(system[ySelect][xSelect], player)}};
-        println(HUD_DisplayCardCluster(hud));*/
         GMP_system();
         readInt();
     }
