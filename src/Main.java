@@ -1153,8 +1153,8 @@ class Main extends Program {
         final int HUD_MENU_MINCALLPOS = 9;
         final int HUD_MENU_LENGTH = 65;
         final String[] ACTIONS_YESNO = new String[]{
-            "Annuler",
-            "Confirmer"
+            "0. Annuler",
+            "1. Confirmer"
         };
 
         String[] HUD_menuCallAction(String callAction, int prevLen){
@@ -1178,7 +1178,7 @@ class Main extends Program {
         Card HUD_confirmMoveMenu(Vector2 dest){
             double distance = VECTOR2_distance(player.pos, dest);
             String call = "- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -";
-            return HUD_menuCard(ACTIONS_YESNO, call);
+            return HUD_menuCard(ACTIONS_YESNO, call, false);
         }
 
         Card HUD_insufficientHydrogen(int cost){
@@ -1204,7 +1204,16 @@ class Main extends Program {
         }
 
         Card HUD_menuCard(String[] actions, String callAction){
-            String[] lines = combineArrays(new String[][]{HUD_numberList(actions), HUD_menuCallAction(callAction, length(actions))});
+            return HUD_menuCard(actions, callAction, true);
+        }
+
+        Card HUD_menuCard(String[] actions, String callAction, boolean generateNumber){
+            String[] lines;
+            if(generateNumber){
+                lines = combineArrays(new String[][]{HUD_numberList(actions), HUD_menuCallAction(callAction, length(actions))});
+            } else {
+                lines = combineArrays(new String[][]{actions, HUD_menuCallAction(callAction, length(actions))});
+            }
             return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
         }
 
@@ -1242,7 +1251,7 @@ class Main extends Program {
         }
 
         Card HUD_shipRepairConfirmMenu(int Fe, int rep){
-            return HUD_menuCard(ACTIONS_YESNO, "- Vous consommerez " + Fe + "u. de fer pour restaurer la coque à " + rep + "% -");
+            return HUD_menuCard(ACTIONS_YESNO, "- Vous consommerez " + Fe + "u. de fer pour restaurer la coque à " + rep + "% -", false);
         }
 
             //#endregion
@@ -1261,7 +1270,7 @@ class Main extends Program {
         }
 
         Card HUD_shipReinforceConfirmMenu(){
-            return HUD_menuCard(ACTIONS_YESNO, "- Confirmer ? -");
+            return HUD_menuCard(ACTIONS_YESNO, "- Confirmer ? -", false);
         }
             //#endregion
 
