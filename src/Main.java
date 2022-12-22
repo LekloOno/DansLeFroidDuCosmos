@@ -447,10 +447,11 @@ class Main extends Program {
         for(int y = 0; y<range-XAXIS_WIDTH; y++){
             line = (int)(y+sysFirstY) + ((y+sysFirstY)/10 < 1 ? " " : "") + "|";
             for(int x = 0; (x+2)<horizRange/2; x ++){
+                boolean inSysRange = (x+sysFirstX)<length(system, 2) && (y+sysFirstY)<length(system);
                 if(x+sysFirstX == p.pos.x && y+sysFirstY == p.pos.y){
                     line += 'V';
-                }
-                else if(VECTOR2_distance(p.pos, newVector2(x+sysFirstX, y+sysFirstY)) <= p.ship.SightRange){
+                } 
+                else if(inSysRange && VECTOR2_distance(p.pos, newVector2(x+sysFirstX, y+sysFirstY)) <= p.ship.SightRange){
                     line += system[y+sysFirstY][x+sysFirstX].type.type.sprite;
                 }
                 else {
