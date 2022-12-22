@@ -410,6 +410,16 @@ class Main extends Program {
 
         return canUpgrade;
     }
+
+    boolean PLAYER_upgradeStorage(Player p, int Fe){
+        boolean canUpgrade = Fe <= p.ownedResources[0];
+        if(canUpgrade){
+            p.ownedResources[0] -= Fe;
+            p.ship.Storage += Fe/SHIP_STORAGETOIRON;
+        }
+
+        return canUpgrade;
+    }
     //#endregion
 
     //#region SYS   | SYSTEM
@@ -912,6 +922,7 @@ class Main extends Program {
     }
 
     final int SHIP_SIGHTTOIRON = 8;
+    final int SHIP_STORAGETOIRON = 2;
     
 
     int SHIP_hydrogenRequired(double distance){
@@ -1310,15 +1321,31 @@ class Main extends Program {
             //#endregion
 
             //#region Upgrade Storage
+        Card HUD_shipStorageUpgradeMenu(){
+            String[] lines = new String[]{
+                " Améliorer la capacité de stockage permet de transporter plus de ressources.",
+                " 1 espace de stockage supplémentaire coûte " + SHIP_STORAGETOIRON + " de Fer.",
+                "",
+                "",
+                "- Indiquez la quantité d'espace stockage à augmenter -"
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        Card HUD_shipStorageUpgradeConfirmMenu(){
+            return HUD_menuCard(ACTIONS_YESNO, "- Confirmer ? -", false);
+        }
             //#endregion
         //#endregion
 
         final int STATUS_COLWIDTH = 15;
         final String STATUS_UNIT = " u";
 
-        Card HUD_Status(int[] resPreview, int hpPreview){
+        Card HUD_Status(int[] resPreview, int hpPreview, int storePreview){
             int totalPrev = 0;
             int totalRes = 0;
+            String store = "";
             String total = "";
             String hp = "";
 
@@ -1348,6 +1375,12 @@ class Main extends Program {
             } else {
                 hp = player.ship.HPs*100/player.ship.MaxHPs + "";
             }
+
+            if(storePreview != 0){
+                store = player.ship.Storage+storePreview + "(+" + storePreview + ")";
+            } else {
+                store = player.ship.Storage+"";
+            }
             //#endregion
 
             String[] lines = new String[]{
@@ -1356,7 +1389,7 @@ class Main extends Program {
                 setAsTableLine(new String[]{"Hydrogène :", res[1], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Oxygène :", res[2], STATUS_UNIT}, STATUS_COLWIDTH),
                 "",
-                "Espace de stockage : " + total + "/" + player.ship.Storage,
+                "Espace de stockage : " + total + "/" + store,
                 setAsTableLine(new String[]{"____","____","____"}, STATUS_COLWIDTH),
                 "",
                 "Vaisseau - ",
@@ -1367,11 +1400,11 @@ class Main extends Program {
         }
 
         Card HUD_Status(){
-            return HUD_Status(emptyResources(), 0);
+            return HUD_Status(emptyResources(), 0, 0);
         }
 
         Card HUD_Status(int[] preview){
-            return HUD_Status(preview, 0);
+            return HUD_Status(preview, 0, 0);
         }
     
         String[] HUD_numberList(String [] list){
@@ -1497,7 +1530,7 @@ class Main extends Program {
             int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
             if(feAmount>0){
                 win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
-                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount));
+                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
 
                 GMP_displayHUD();
 
@@ -1551,6 +1584,24 @@ class Main extends Program {
             }
         } else if(equals(input, "4")){
             //STORAGE UPGRADE
+            win_botLeft = HUD_shipStorageUpgradeMenu();
+            GMP_displayHUD();
+
+            input = readString();
+            if(isNumeric(input)){
+                int feAmount = Integer.parseInt(input)*SHIP_STORAGETOIRON;
+                win_botLeft = HUD_shipStorageUpgradeConfirmMenu();
+                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, 0, Integer.parseInt(input));
+                GMP_displayHUD();
+
+                input = readString();
+
+                if(confirm(input)){
+                    if(!PLAYER_upgradeStorage(player,feAmount)){
+                        GMP_insufficientFE(feAmount);
+                    }
+                }
+            }
         }
         GMP_system();
     }
