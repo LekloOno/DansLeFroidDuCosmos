@@ -10,6 +10,14 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
+        boolean Admin(){
+            return equals(player.name, "admin");
+        }
+
+        boolean confirm(String inp){
+            return equals(input, "1") || equals(input, "");
+        }
+
         void waitSeconds(double seconds){
             long startTime = System.currentTimeMillis();
             while(System.currentTimeMillis() < startTime + (seconds * 1000)){}
@@ -232,6 +240,10 @@ class Main extends Program {
         return length(coord)>=3 && isNumeric(charAt(coord, 0)) && isNumeric(charAt(coord, i)) && sepCount < 2;
     }
 
+    boolean INPUT_isValidCoord(String coord, SysObject[][] sys){
+        return INPUT_isValidCoord(coord) && INPUT_inputToVector2(coord).x < length(sys,2) && INPUT_inputToVector2(coord).y < length(sys);
+    }
+
     int INPUT_repairInputToFe(String rep){
         /*Convert a repair input into an Iron value
         -1 means there is an error in the input format
@@ -368,8 +380,7 @@ class Main extends Program {
         return canMove;
     }
 
-    boolean PLAYER_repair(Player p, int Fe)
-    {
+    boolean PLAYER_repair(Player p, int Fe){
         boolean canRepair = Fe <= p.ownedResources[0];
         if(canRepair){
             p.ownedResources[0] -= Fe;
@@ -377,6 +388,17 @@ class Main extends Program {
         }
 
         return canRepair;
+    }
+
+    boolean PLAYER_reinforce(Player p, int Fe){
+        boolean canReinforce = Fe <= p.ownedResources[0];
+        if(canReinforce){
+            p.ownedResources[0] -= Fe;
+            p.ship.MaxHPs += SHIP_hpsForIron(Fe/4);
+            p.ship.HPs += SHIP_hpsForIron(Fe/4);
+        }
+
+        return canReinforce;
     }
     //#endregion
 
@@ -1185,6 +1207,8 @@ class Main extends Program {
             return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
         }
 
+
+        //#region SHIP management
         Card HUD_shipManagementMenu(){
             String[] actions = new String[]{
                 "Annuler",
@@ -1196,6 +1220,8 @@ class Main extends Program {
 
             return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
         }
+
+            //#region Repair
 
         Card HUD_shipRepairMenu(){
             String[] lines = new String[]{
@@ -1217,6 +1243,33 @@ class Main extends Program {
         Card HUD_shipRepairConfirmMenu(int Fe, int rep){
             return HUD_menuCard(ACTIONS_YESNO, "- Vous consommerez " + Fe + "u. de fer pour restaurer la coque à " + rep + "% -");
         }
+
+            //#endregion
+
+            //#region Reinforce
+        Card HUD_shipReinforceMenu(){
+            String[] lines = new String[]{
+                " Renforcer la coque permet d'augmenter sa durée de vie.",
+                " Il faudra cependant plus de fer pour la réparer",
+                "",
+                "",
+                "- Indiquez le montant de fer à utiliser -"
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        Card HUD_shipReinforceConfirmMenu(){
+            return HUD_menuCard(ACTIONS_YESNO, "- Confirmer ? -");
+        }
+            //#endregion
+
+            //#region Upgrade Telescope
+            //#endregion
+
+            //#region Upgrade Storage
+            //#endregion
+        //#endregion
 
         final int STATUS_COLWIDTH = 15;
         final String STATUS_UNIT = " u";
@@ -1298,13 +1351,51 @@ class Main extends Program {
         win_botRight = HUD_Status();
 
         GMP_displayHUD();
+        println(logCache);
+        logCache = "";
 
         input = readString();
         if(equals(input,"1")){
             GMP_move();
         } else if(equals(input, "4")){
             GMP_ManageShip();
+        } else if(Admin()){
+            String[] params = input.split(" ");
+            if(equals(params[0], "log")) {
+                if(equals(params[1],"maxhps")){
+                    logCache = ""+player.ship.MaxHPs;
+                } else if(equals(params[1], "hps")){
+                    logCache = ""+player.ship.HPs;
+                }
+            } else if(equals(params[0], "set")){
+                if(isNumeric(params[2])){
+                    int setVal = Integer.parseInt(params[2]);
+                    if(equals(params[1], "fe")){
+                        player.ownedResources[0] = setVal;
+                        logCache = "Iron";
+                    } else if(equals(params[1], "h")){
+                        player.ownedResources[1] = setVal;
+                        logCache = "Hydrogen";
+                    } else if(equals(params[1], "o")){
+                        player.ownedResources[2] = setVal;
+                        logCache = "Oxygen";
+                    }
+                } else if(INPUT_isValidCoord(params[2], sys_current)){
+                    Vector2 coord = INPUT_inputToVector2(params[2]);
+                    if(equals(params[1], "pPos")){
+                        player.pos = coord;
+                        logCache = "Player position";
+                    }
+                }
+                if(equals(logCache, "")){
+                    logCache = "Error in the input";
+                } else{
+                    logCache = "Successfully set " + logCache;
+                }
+                
+            }
         }
+        GMP_system();
     }
 
     final double TEMPWINDOW = 1.8;
@@ -1315,9 +1406,7 @@ class Main extends Program {
 
         input = readString();
 
-        if(equals(input,"0")){
-            GMP_system();
-        } else if(INPUT_isValidCoord(input)){
+        if(INPUT_isValidCoord(input, sys_current)){
             Vector2 inputCoord = INPUT_inputToVector2(input);
             int cost = SHIP_hydrogenRequired(VECTOR2_distance(player.pos, inputCoord));
             win_botLeft = HUD_confirmMoveMenu(inputCoord);
@@ -1327,17 +1416,15 @@ class Main extends Program {
 
             input = readString();
 
-            if(equals(input, "1")){
+            if(confirm(input)){
                 if(!PLAYER_move(player, inputCoord)){
                     win_botLeft = HUD_insufficientHydrogen(cost);
                     GMP_displayHUD();
                     waitSeconds(TEMPWINDOW);
                 }
             }
-
-            GMP_system();
         }
-        input = readString();
+        GMP_system();
     }
 
     void GMP_ManageShip(){
@@ -1349,7 +1436,6 @@ class Main extends Program {
 
         if(equals(input, "1")){
             win_botLeft = HUD_shipRepairMenu();
-
             GMP_displayHUD();
 
             input = readString();
@@ -1364,17 +1450,37 @@ class Main extends Program {
 
                 input = readString();
 
-                if(equals(input, "1")){
+                if(confirm(input)){
                     if(!PLAYER_repair(player, feAmount)){
                         win_botLeft = HUD_insufficientFe(feAmount);
                         GMP_displayHUD();
                         waitSeconds(TEMPWINDOW);
                     }
                 }
-                GMP_system();
             }
+        } else if(equals(input, "2")){
+            win_botLeft = HUD_shipReinforceMenu();
+            GMP_displayHUD();
 
+            input = readString();
+            if(isNumeric(input)){
+                int feAmount = Integer.parseInt(input);
+                win_botLeft = HUD_shipReinforceConfirmMenu();
+                win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+                GMP_displayHUD();
+
+                input = readString();
+
+                if(confirm(input)){    
+                    if(!PLAYER_reinforce(player, feAmount)){
+                        win_botLeft = HUD_insufficientFe(feAmount);
+                        GMP_displayHUD();
+                        waitSeconds(TEMPWINDOW);
+                    }
+                }
+            }
         }
+        GMP_system();
     }
 
     void GMP_displayHUD(){
@@ -1425,6 +1531,8 @@ class Main extends Program {
     Card win_topRight;
     Card win_botLeft;
     Card win_botRight;
+
+    String logCache = "";
 
     SysObject[][] sys_current;
 
