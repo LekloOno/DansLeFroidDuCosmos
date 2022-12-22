@@ -685,8 +685,8 @@ class Main extends Program {
             type = SOT_NEB;
         }
         if(_label == ObjectLabel.Star){
-            genSet = NEB_GENSET;
-            type = SOT_NEB;
+            genSet = STA_GENSET;
+            type = SOT_STA;
         }
         if(_label == ObjectLabel.Void){
             return newVoid();
@@ -997,10 +997,15 @@ class Main extends Program {
             //MUST be used on a normalized cluster
             String s = "";
             Card[][] normalized = HUD_NormalizeCardCluster(cards);
-            String separator = new String(new char[(cards[0][0].dimension.x + length(VERT_SEPARATOR))*length(normalized[0])-length(VERT_SEPARATOR)]).replace("\0", HORIZ_SEPARATOR);
+            String separator;
             
             for(int y = 0; y < length(normalized); y ++){
+                int sepLen = 0;
+                for(int x = 0; x<length(normalized[y]); x++){
+                    sepLen += cards[y][x].dimension.x;
+                }
                 s += HUD_DisplayCardLine(normalized[y]);
+                separator = new String(new char[sepLen]).replace("\0", HORIZ_SEPARATOR);
                 s += "\n" + separator + "\n\n";
             }
 
@@ -1389,6 +1394,9 @@ class Main extends Program {
                     } else if(equals(params[1], "o")){
                         player.ownedResources[2] = setVal;
                         logCache = "Oxygen";
+                    } else if(equals(params[1], "sight")){
+                        player.ship.SightRange = setVal;
+                        logCache = "Sight";
                     }
                 } else if(INPUT_isValidCoord(params[2], sys_current)){
                     Vector2 coord = INPUT_inputToVector2(params[2]);
