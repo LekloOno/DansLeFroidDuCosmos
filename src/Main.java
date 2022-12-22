@@ -10,29 +10,21 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
+        void waitSeconds(double seconds){
+            long startTime = System.currentTimeMillis();
+            while(System.currentTimeMillis() < startTime + (seconds * 1000)){}
+        }
+
+        boolean isNumeric(String s){
+            int i = 0;
+            while(i<length(s)-1 && isNumeric(charAt(s, i))){
+                i++;
+            }
+            return isNumeric(charAt(s, i));
+        }
+
         boolean isNumeric(char c){
             return c <= '9' && c >= '0';
-        }
-
-        boolean isValidCoord(String coord){
-            int i = 1;
-            int sepCount = 0;
-            while(i<length(coord)-1 && (isNumeric(charAt(coord, i)) || charAt(coord, i) == ':' || charAt(coord, i) == ';') && sepCount < 2){
-                if(charAt(coord, i) == ':' || charAt(coord, i) == ';'){
-                    sepCount ++;
-                }
-                i++;
-            }
-    
-            return length(coord)>=3 && isNumeric(charAt(coord, 0)) && isNumeric(charAt(coord, i)) && sepCount < 2;
-        }
-
-        Vector2 inputToVector2(String coord){
-            int i = 0;
-            while(i<length(coord) && charAt(coord, i) != ':' && charAt(coord, i) != ';'){
-                i++;
-            }
-            return newVector2(Integer.parseInt(substring(coord, 0, i)), Integer.parseInt(substring(coord, i+1, length(coord))));
         }
 
         String setAsTableLine(String[] line, int colWidth){
@@ -223,6 +215,67 @@ class Main extends Program {
         //#endregion
     //#endregion
 
+    //#region INPUT
+    //INPUT regroup function that process inputs into explicit values, or check for the good format of these inputs
+    
+
+    boolean INPUT_isValidCoord(String coord){
+        int i = 1;
+        int sepCount = 0;
+        while(i<length(coord)-1 && (isNumeric(charAt(coord, i)) || charAt(coord, i) == ':' || charAt(coord, i) == ';') && sepCount < 2){
+            if(charAt(coord, i) == ':' || charAt(coord, i) == ';'){
+                sepCount ++;
+            }
+            i++;
+        }
+
+        return length(coord)>=3 && isNumeric(charAt(coord, 0)) && isNumeric(charAt(coord, i)) && sepCount < 2;
+    }
+
+    int INPUT_repairInputToFe(String rep){
+        /*Convert a repair input into an Iron value
+        -1 means there is an error in the input format
+        -2 means it is an incorrect value
+        */
+        String num = rep;
+        int val = 0;
+        int mode = 0;
+
+        if(charAt(rep, length(rep)-1) == '%'){
+            num = substring(rep, 0, length(rep)-1);
+            mode = 1;
+        } else if(charAt(rep, 0) == '+'){
+            num = substring(rep, 1, length(rep));
+            mode = 2;
+        }
+
+        if(isNumeric(num)){
+            val = Integer.parseInt(num);
+        } else {
+            return -1;
+        }
+
+        if(mode == 0){
+            return val;
+        } else if (mode == 1){
+            if(val < (player.ship.HPs*100/player.ship.MaxHPs)){
+                return -2;
+            }
+            return SHIP_ironRequired((int)((Math.min(val,100)/100.0)*player.ship.MaxHPs)-player.ship.HPs);
+        }
+
+        return SHIP_ironRequired(Math.min((int)((val/100.0)*player.ship.MaxHPs),(player.ship.MaxHPs-player.ship.HPs)));
+    }
+
+    Vector2 INPUT_inputToVector2(String coord){
+        int i = 0;
+        while(i<length(coord) && charAt(coord, i) != ':' && charAt(coord, i) != ';'){
+            i++;
+        }
+        return newVector2(Integer.parseInt(substring(coord, 0, i)), Integer.parseInt(substring(coord, i+1, length(coord))));
+    }
+    //#endregion
+
     //#region RES   | RESOURCES
     
     /* Resources is a key concept of the game.
@@ -315,10 +368,15 @@ class Main extends Program {
         return canMove;
     }
 
-    void PLAYER_repair(Player p)
+    boolean PLAYER_repair(Player p, int Fe)
     {
-        println("Vous disposez de " + p.ownedResources[0] + " unités de Fer.\nCombien en dépenser pour la réparation ? ");
-        println("Max : " + Math.min(SHIP_ironRequired(p.ship.MaxHPs-p.ship.HPs),p.ownedResources[0]));
+        boolean canRepair = Fe <= p.ownedResources[0];
+        if(canRepair){
+            p.ownedResources[0] -= Fe;
+            p.ship.HPs += SHIP_hpsForIron(Fe);
+        }
+
+        return canRepair;
     }
     //#endregion
 
@@ -828,7 +886,11 @@ class Main extends Program {
 
     int SHIP_ironRequired(int HPs){
         //Convert a given HPs amount to a Fe cost
-        return -1;
+        return HPs / 2;
+    }
+
+    int SHIP_hpsForIron(int Fe){
+        return Fe * 2;
     }
 
     /* 
@@ -1067,6 +1129,11 @@ class Main extends Program {
     
         final int HUD_MENU_MINCALLPOS = 9;
         final int HUD_MENU_LENGTH = 65;
+        final String[] ACTIONS_YESNO = new String[]{
+            "Annuler",
+            "Confirmer"
+        };
+
         String[] HUD_menuCallAction(String callAction, int prevLen){
             //Returns the call part of menus, with a minimum amount of filling lines
             String[] call = new String[]{"", callAction};
@@ -1086,13 +1153,9 @@ class Main extends Program {
         }
 
         Card HUD_confirmMoveMenu(Vector2 dest){
-            String[] actions = new String[]{
-                "Annuler",
-                "Confirmer"
-            };
             double distance = VECTOR2_distance(player.pos, dest);
             String call = "- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -";
-            return HUD_menuCard(actions, call);
+            return HUD_menuCard(ACTIONS_YESNO, call);
         }
 
         Card HUD_insufficientHydrogen(int cost){
@@ -1106,17 +1169,63 @@ class Main extends Program {
             return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
         }
 
+        Card HUD_insufficientFe(int cost){
+            String[] lines = new String[]{
+                "Fer insuffisant.",
+                "L'action nécessite " + cost + " unités de Fer.",
+                "-",
+                "Annulation .."
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
         Card HUD_menuCard(String[] actions, String callAction){
             String[] lines = combineArrays(new String[][]{HUD_numberList(actions), HUD_menuCallAction(callAction, length(actions))});
             return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
         }
 
+        Card HUD_shipManagementMenu(){
+            String[] actions = new String[]{
+                "Annuler",
+                "Réparer la coque",
+                "Renforcer la coque",
+                "Améliorer le téléscope",
+                "Améliorer le stockage"
+            };
+
+            return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
+        }
+
+        Card HUD_shipRepairMenu(){
+            String[] lines = new String[]{
+                " Vous pouvez indiquer le montant de fer à dépenser,",
+                " le pourcentage à restaurer, ou le pourcentage de restauration.",
+                "",
+                " Exemple :",
+                "20  - utilise 20 de fer",
+                "75% - restaure la coque à 75%",
+                "+5  - ajoute 5% à l'état de la coque",
+                "",
+                "",
+                "- Entrez la valeur de réparation souhaitée -"
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        Card HUD_shipRepairConfirmMenu(int Fe, int rep){
+            return HUD_menuCard(ACTIONS_YESNO, "- Vous consommerez " + Fe + "u. de fer pour restaurer la coque à " + rep + "% -");
+        }
+
         final int STATUS_COLWIDTH = 15;
         final String STATUS_UNIT = " u";
 
-        Card HUD_Status(int[] preview){
+        Card HUD_Status(int[] resPreview, int hpPreview){
             int totalPrev = 0;
             int totalRes = 0;
+            String total = "";
+            String hp = "";
 
             String[] res = new String[]{
                 player.ownedResources[0]+"",
@@ -1124,13 +1233,27 @@ class Main extends Program {
                 player.ownedResources[2]+""
             };
 
+            //#region Preview
             for(int i = 0; i<length(res); i++){
-                totalPrev += preview[i];
+                totalPrev += resPreview[i];
                 totalRes += player.ownedResources[i];
-                if(preview[i] != 0){
-                    res[i] = player.ownedResources[i] - preview[i] + "(-" + preview[i] + ")";
+                if(resPreview[i] != 0){
+                    res[i] = player.ownedResources[i] - resPreview[i] + "(-" + resPreview[i] + ")";
                 }
             }
+
+            if(totalPrev != 0){
+                total = totalRes-totalPrev + "(-" + totalPrev + ")";
+            } else {
+                total = totalRes + "";
+            }
+
+            if(hpPreview != 0){
+                hp = (((player.ship.HPs+hpPreview)*100)/player.ship.MaxHPs) + "(+" + hpPreview + ")";
+            } else {
+                hp = player.ship.HPs*100/player.ship.MaxHPs + "";
+            }
+            //#endregion
 
             String[] lines = new String[]{
                 "Resources -",
@@ -1138,18 +1261,22 @@ class Main extends Program {
                 setAsTableLine(new String[]{"Hydrogène :", res[1], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Oxygène :", res[2], STATUS_UNIT}, STATUS_COLWIDTH),
                 "",
-                "Espace de stockage : " + (totalRes-totalPrev) + "/" + player.ship.Storage,
+                "Espace de stockage : " + total + "/" + player.ship.Storage,
                 setAsTableLine(new String[]{"____","____","____"}, STATUS_COLWIDTH),
                 "",
                 "Vaisseau - ",
-                "Etat de la coque   :  " + player.ship.HPs/player.ship.MaxHPs*100 + " %"
+                "Etat de la coque   :  " + hp + " %"
             };
 
             return newCard(lines, newVector2(50, length(lines)), true);
         }
 
         Card HUD_Status(){
-            return HUD_Status(emptyResources());
+            return HUD_Status(emptyResources(), 0);
+        }
+
+        Card HUD_Status(int[] preview){
+            return HUD_Status(preview, 0);
         }
     
         String[] HUD_numberList(String [] list){
@@ -1175,6 +1302,8 @@ class Main extends Program {
         input = readString();
         if(equals(input,"1")){
             GMP_move();
+        } else if(equals(input, "4")){
+            GMP_ManageShip();
         }
     }
 
@@ -1188,8 +1317,8 @@ class Main extends Program {
 
         if(equals(input,"0")){
             GMP_system();
-        } else if(isValidCoord(input)){
-            Vector2 inputCoord = inputToVector2(input);
+        } else if(INPUT_isValidCoord(input)){
+            Vector2 inputCoord = INPUT_inputToVector2(input);
             int cost = SHIP_hydrogenRequired(VECTOR2_distance(player.pos, inputCoord));
             win_botLeft = HUD_confirmMoveMenu(inputCoord);
             win_botRight = HUD_Status(new int[]{0, cost, 0});
@@ -1199,22 +1328,53 @@ class Main extends Program {
             input = readString();
 
             if(equals(input, "1")){
-                if(PLAYER_move(player, inputCoord)){
-                    GMP_system();
-                } else {
+                if(!PLAYER_move(player, inputCoord)){
                     win_botLeft = HUD_insufficientHydrogen(cost);
                     GMP_displayHUD();
-                    long startTime = System.currentTimeMillis();
-                    while(System.currentTimeMillis() < startTime + (TEMPWINDOW * 1000)){
-
-                    }
-                    GMP_system();
+                    waitSeconds(TEMPWINDOW);
                 }
-            } else {
-                GMP_system();
             }
+
+            GMP_system();
         }
         input = readString();
+    }
+
+    void GMP_ManageShip(){
+        win_botLeft = HUD_shipManagementMenu();
+
+        GMP_displayHUD();
+
+        input = readString();
+
+        if(equals(input, "1")){
+            win_botLeft = HUD_shipRepairMenu();
+
+            GMP_displayHUD();
+
+            input = readString();
+            int feAmount = INPUT_repairInputToFe(input);
+            println(feAmount);
+            int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
+            if(feAmount>0){
+                win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
+                win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount));
+
+                GMP_displayHUD();
+
+                input = readString();
+
+                if(equals(input, "1")){
+                    if(!PLAYER_repair(player, feAmount)){
+                        win_botLeft = HUD_insufficientFe(feAmount);
+                        GMP_displayHUD();
+                        waitSeconds(TEMPWINDOW);
+                    }
+                }
+                GMP_system();
+            }
+
+        }
     }
 
     void GMP_displayHUD(){
@@ -1271,6 +1431,7 @@ class Main extends Program {
     void algorithm() {
         println("Entrez votre nom de joueur aa: ");
         player = initPlayer(readString(), newVector2(20, 16));
+        player.ship.HPs = 50;
         sys_current = SYS_generateSystem();
         /*
         player2 = initPlayer("aa", newVector2(18, 22));
