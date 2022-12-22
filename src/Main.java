@@ -1105,20 +1105,32 @@ class Main extends Program {
         Card HUD_SO_displayInfosCard(SysObject o, Player p, boolean select, Vector2 pos){
             //Display a card giving the available informations and actions on the given object. Line by Line (to help in building the global HUD format)
             String[] lines = new String[HUD_INFOCARD_HEIGHT];
-            lines[0] = HUD_SO_displayCardHead(o, p, select, pos);
+            Vector2 cardSize;
+            if(!select || VECTOR2_distance(p.pos, pos) <= p.ship.SightRange){
+                cardSize = newVector2(HUD_INFOCARD_LENGTH, HUD_INFOCARD_HEIGHT);
+                lines[0] = HUD_SO_displayCardHead(o, p, select, pos);
 
-            int i = 1;
-            while(i<HUD_INFOCARD_HEIGHT && ((i-1)*HUD_INFOCARD_LENGTH) < length(o.type.description)){
-                lines[i] = substring(o.type.description, (i-1)*HUD_INFOCARD_LENGTH, Math.min(i*HUD_INFOCARD_LENGTH, length(o.type.description)));
-                i++;
+                int i = 1;
+                while(i<HUD_INFOCARD_HEIGHT && ((i-1)*HUD_INFOCARD_LENGTH) < length(o.type.description)){
+                    lines[i] = substring(o.type.description, (i-1)*HUD_INFOCARD_LENGTH, Math.min(i*HUD_INFOCARD_LENGTH, length(o.type.description)));
+                    i++;
+                }
+                while(i<HUD_INFOCARD_HEIGHT){
+                    lines[i] = "";
+                    i++;
+                }
+            } else {
+                lines = new String[]{"Cible hors de portée du télescope."};
+                cardSize = newVector2(HUD_INFOCARD_LENGTH, 1);
             }
-            while(i<HUD_INFOCARD_HEIGHT){
-                lines[i] = "";
-                i++;
-            }
+            
         
-            return newCard(lines, newVector2(HUD_INFOCARD_LENGTH, HUD_INFOCARD_HEIGHT), true);
+            return newCard(lines, cardSize, true);
         }
+/*
+        Card HUD_SO_displayObsCard(SysObject o, Player p){
+
+        }*/
 
         Card HUD_SO_displayInfosCard(SysObject o, Player p){
             return HUD_SO_displayInfosCard(o, p, false, VECTOR2_NULL);
@@ -1144,7 +1156,7 @@ class Main extends Program {
                     head += "A proximité de - ";
                 }
             }
-
+        
             if(o.name != null){
                 head += o.name + ", ";
             }
@@ -1207,6 +1219,13 @@ class Main extends Program {
             double distance = VECTOR2_distance(player.pos, dest);
             String call = "- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -";
             return HUD_menuCard(ACTIONS_YESNO, call, false);
+        }
+
+        Card HUD_inspectMenu(){
+            String[] actions = new String[]{
+                "Annuler"
+            };
+            return HUD_menuCard(actions, "- Entrez les coordonnées d'observation (x:y) -");
         }
 
         Card HUD_insufficientHydrogen(int cost){
@@ -1417,7 +1436,7 @@ class Main extends Program {
         //#endregion
     //#endregion
 
-    //#region GMP   | GAMEPLAY
+    //#region GMP   | RUNTIME GAMEPLAY
     void GMP_insufficientFE(int amount){
         win_botLeft = HUD_insufficientFe(amount);
         GMP_displayHUD();
@@ -1437,8 +1456,12 @@ class Main extends Program {
         input = readString();
         if(equals(input,"1")){
             GMP_move();
+        } else if(equals(input, "2")){
+            GMP_inspect();
+        } else if(equals(input, "3")){
+            //GMP_approach();
         } else if(equals(input, "4")){
-            GMP_ManageShip();
+            GMP_manageShip();
         } else if(Admin()){
             GMP_adminConsole(input.split(" "));
         }
@@ -1487,6 +1510,26 @@ class Main extends Program {
     }
 
     final double TEMPWINDOW = 1.8;
+
+    void GMP_inspect(){
+        win_botLeft = HUD_inspectMenu();
+
+        GMP_displayHUD();;
+
+        input = readString();
+
+        while(INPUT_isValidCoord(input, sys_current)){
+            Vector2 inputCoord = INPUT_inputToVector2(input);
+            
+            win_botRight = HUD_SO_displayInfosCard(sys_current[inputCoord.y][inputCoord.x], player, true, inputCoord);
+
+            GMP_displayHUD();
+
+            input = readString();
+        }
+        GMP_system();
+    }
+
     void GMP_move(){
         win_botLeft = HUD_moveMenu();
 
@@ -1516,7 +1559,7 @@ class Main extends Program {
     }
 
     //#region Ship Management
-    void GMP_ManageShip(){
+    void GMP_manageShip(){
         win_botLeft = HUD_shipManagementMenu();
 
         GMP_displayHUD();
