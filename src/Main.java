@@ -400,6 +400,16 @@ class Main extends Program {
 
         return canReinforce;
     }
+
+    boolean PLAYER_upgradeTelescope(Player p, int Fe){
+        boolean canUpgrade = Fe <= p.ownedResources[0];
+        if(canUpgrade){
+            p.ownedResources[0] -= Fe;
+            p.ship.SightRange += Fe/SHIP_SIGHTTOIRON;
+        }
+
+        return canUpgrade;
+    }
     //#endregion
 
     //#region SYS   | SYSTEM
@@ -876,7 +886,7 @@ class Main extends Program {
 
     final int SHIP_DEF_INITHPS = 100;
     final int SHIP_DEF_INITSTOR = 80;
-    final double SHIP_DEF_INITSIGHT = 12.5;
+    final double SHIP_DEF_INITSIGHT = 9.5;
     final double SHIP_DEF_INITEFF = 1;
 
     Ship initShip(){
@@ -900,6 +910,8 @@ class Main extends Program {
         s.Efficiency = _efficiency;
         return s;
     }
+
+    final int SHIP_SIGHTTOIRON = 8;
     
 
     int SHIP_hydrogenRequired(double distance){
@@ -998,7 +1010,7 @@ class Main extends Program {
             String s = "";
             Card[][] normalized = HUD_NormalizeCardCluster(cards);
             String separator;
-            
+
             for(int y = 0; y < length(normalized); y ++){
                 int sepLen = 0;
                 for(int x = 0; x<length(normalized[y]); x++){
@@ -1265,7 +1277,7 @@ class Main extends Program {
         Card HUD_shipReinforceMenu(){
             String[] lines = new String[]{
                 " Renforcer la coque permet d'augmenter sa durée de vie.",
-                " Il faudra cependant plus de fer pour la réparer",
+                " Il faudra cependant plus de fer pour la réparer.",
                 "",
                 "",
                 "- Indiquez le montant de fer à utiliser -"
@@ -1280,6 +1292,21 @@ class Main extends Program {
             //#endregion
 
             //#region Upgrade Telescope
+        Card HUD_shipTelescopeUpgradeMenu(){
+            String[] lines = new String[]{
+                " Améliorer le télescope permet d'améliorer la portée d'observation.",
+                " Améliorer la portée d'1 unité de système demande " + SHIP_SIGHTTOIRON + " de Fer.",
+                "",
+                "",
+                "- Indiquez le nombre d'amélioration à acheter. 1 = " + SHIP_SIGHTTOIRON + " Fe. -"
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+
+        Card HUD_shipTelescopeUpgradeConfirmMenu(){
+            return HUD_menuCard(ACTIONS_YESNO, "- Confirmer ? -", false);
+        }
             //#endregion
 
             //#region Upgrade Storage
@@ -1358,6 +1385,11 @@ class Main extends Program {
     //#endregion
 
     //#region GMP   | GAMEPLAY
+    void GMP_insufficientFE(int amount){
+        win_botLeft = HUD_insufficientFe(amount);
+        GMP_displayHUD();
+        waitSeconds(TEMPWINDOW);
+    }
 
     void GMP_system(){
         win_topLeft = SYS_playerVisionToCard(sys_current, player);
@@ -1381,6 +1413,8 @@ class Main extends Program {
                     logCache = ""+player.ship.MaxHPs;
                 } else if(equals(params[1], "hps")){
                     logCache = ""+player.ship.HPs;
+                } else if(equals(params[1], "sight")){
+                    logCache = ""+player.ship.SightRange;
                 }
             } else if(equals(params[0], "set")){
                 if(isNumeric(params[2])){
@@ -1453,6 +1487,7 @@ class Main extends Program {
         input = readString();
 
         if(equals(input, "1")){
+            //REPAIR
             win_botLeft = HUD_shipRepairMenu();
             GMP_displayHUD();
 
@@ -1470,13 +1505,12 @@ class Main extends Program {
 
                 if(confirm(input)){
                     if(!PLAYER_repair(player, feAmount)){
-                        win_botLeft = HUD_insufficientFe(feAmount);
-                        GMP_displayHUD();
-                        waitSeconds(TEMPWINDOW);
+                        GMP_insufficientFE(feAmount);
                     }
                 }
             }
         } else if(equals(input, "2")){
+            //REINFORCE
             win_botLeft = HUD_shipReinforceMenu();
             GMP_displayHUD();
 
@@ -1491,12 +1525,32 @@ class Main extends Program {
 
                 if(confirm(input)){    
                     if(!PLAYER_reinforce(player, feAmount)){
-                        win_botLeft = HUD_insufficientFe(feAmount);
-                        GMP_displayHUD();
-                        waitSeconds(TEMPWINDOW);
+                        GMP_insufficientFE(feAmount);
                     }
                 }
             }
+        } else if(equals(input, "3")){
+            //TELESCOPE UPGRADE
+            win_botLeft = HUD_shipTelescopeUpgradeMenu();
+            GMP_displayHUD();
+
+            input = readString();
+            if(isNumeric(input)){
+                int feAmount = Integer.parseInt(input)*SHIP_SIGHTTOIRON;
+                win_botLeft = HUD_shipTelescopeUpgradeConfirmMenu();
+                win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+                GMP_displayHUD();
+
+                input = readString();
+
+                if(confirm(input)){
+                    if(!PLAYER_upgradeTelescope(player, feAmount)){
+                        GMP_insufficientFE(feAmount);
+                    }
+                }
+            }
+        } else if(equals(input, "4")){
+            //STORAGE UPGRADE
         }
         GMP_system();
     }
