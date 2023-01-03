@@ -1,0 +1,10 @@
+Resources is a key concept of the game.
+    They are owned by players and planets.
+    Player can exctract resources from planets, and use these for diverse interactions.
+
+    Resoureces are represented as an array of integers
+    
+    Such as -
+    [0] = FE
+    [1] = Hydrogen
+    [2] = Oxygen

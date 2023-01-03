@@ -1,0 +1,78 @@
+______________________________________________________________________________________________________________________________________________________________
+ADMIN -
+
+This game provides a brief implementation of an admin console, allowing for better testing and debugging.
+To use it, the current game session must be registered under the name of "admin".
+
+COMMANDS -
+
+    - help
+    Display this help manual.
+
+    - log [TARGET] PARAM
+    Display the value of the specified PARAM parameter in the next Log Cache.
+    If no target is given, it will target the player, otherwise, it will target the SysObject at the given position.
+    
+    See - PARAM and - TARGET
+
+
+    - set [TARGET] PARAM VALUE
+    Set the given parameter value to VALUE.
+    If no target is given, it will target the player, otherwise, it will target the SysObject at the given position.
+
+    See - PARAM, - TARGET and - VALUE
+
+
+
+- PARAM
+
+    There are a few parameters available in the admin console, all are listed below.
+
+    COMMON -
+
+    fe      - target's Iron.                                                                        |   player.ownedResources[0] or so.availableResources[0]
+    h       - ---------Hydrogen.                                                                    |   player.ownedResources[1] or so.availableResources[1]
+    o       - ---------Oxygen.                                                                      |   player.ownedResources[2] or so.availableResources[2]
+    app     - ---------Approached boolean - Not theexacty same meaning for sysObject and player.    |   player.nearbySOstatus[0] or so.approached
+    name    - ---------Name.                                                                        |   target.name
+
+
+    SYSOBJECT SPECIFIC -
+
+    arisk   - system object's Approach Risks                                                        |   so.approachRisks
+    lrisk   - ----------------Landing Risks                                                         |   so.landingRisks
+    mass    - ----------------Mass                                                                  |   so.mass
+    type    - ----------------displayType                                                           |   so.type.type.displayType
+    visit   - ----------------Visited boolean                                                       |   so.visited
+
+
+    PLAYER SPECIFIC -
+
+    pos     - Player's position                                                                     |   player.pos
+    hps     - ---------current Ship state                                                           |   player.ship.HPs
+    maxhps  - ---------ship max HPs                                                                 |   player.ship.MaxHPs
+    sight   - ---------Sight Range                                                                  |   player.ship.SightRange
+    store   - ---------ship Storage capacity                                                        |   player.ship.Storage
+    land    - ---------Landed status                                                                |   player.nearbySOstatus[1]
+
+
+
+- TARGET
+
+    Must be a Vector2 String representation, X:Y, meaning it should return true in the INPUT_isValidCoord(TARGET) function.
+    Allows to target a specific object in the game grid.
+
+
+
+- VALUE
+
+    Numeric -
+    Only integer values are considered in console commands.
+
+    Boolean -
+    To represent a boolean, type 0 for false, any other integer for true.
+
+    String -
+    Simply enter the string value.
+
+______________________________________________________________________________________________________________________________________________________________

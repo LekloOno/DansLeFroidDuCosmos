@@ -12,10 +12,6 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
-        boolean Admin(){
-            return equals(player.name, "admin");
-        }
-
         boolean confirm(String inp){
             return equals(input, "1") || equals(input, "");
         }
@@ -30,7 +26,7 @@ class Main extends Program {
             while(i<length(s)-1 && isNumeric(charAt(s, i))){
                 i++;
             }
-            return isNumeric(charAt(s, i));
+            return length(s)>0 && isNumeric(charAt(s, i));
         }
 
         boolean isNumeric(char c){
@@ -1464,50 +1460,218 @@ class Main extends Program {
             //GMP_approach();
         } else if(equals(input, "4")){
             GMP_manageShip();
-        } else if(Admin()){
+        } else if(isAdmin){
             GMP_adminConsole(input.split(" "));
         }
         GMP_system();
     }
 
+    //#region CMD parameters Names
+    //Common
+    final String CMDP_IRON = "fe";
+    final String CMDP_HYDROGEN = "h";
+    final String CMDP_OXYGEN = "o";
+    final String CMDP_APPROACHED = "app";
+    final String CMDP_NAME = "name";
+
+    //SO specific
+    final String CMDP_APPROACHRISKS = "arisk";
+    final String CMDP_LANDINGRISKS = "lrisk";
+    final String CMDP_MASS = "mass";
+    final String CMDP_TYPE = "type";
+    final String CMDP_VISITED = "visit";
+    
+    //PLAYER specific
+    final String CMDP_POSITION = "pos";
+    final String CMDP_HPS = "hps";
+    final String CMDP_MAXHPS = "maxhps";
+    final String CMDP_SIGHTRANGE = "sight";
+    final String CMDP_STORAGE = "store";
+    final String CMDP_LANDED = "land";
+    //#endregion
+
     void GMP_adminConsole(String[] params){
-        if(equals(params[0], "log")) {
-            if(equals(params[1],"maxhps")){
-                logCache = ""+player.ship.MaxHPs;
-            } else if(equals(params[1], "hps")){
-                logCache = ""+player.ship.HPs;
-            } else if(equals(params[1], "sight")){
-                logCache = ""+player.ship.SightRange;
+        /*
+        The implementation of this console is very rudimentary.
+        It would be much smarter to use oop, or at least delegate, but im not sur we're allowed to do so.
+         */
+        if(equals(params[0], "help")){
+            File f = newFile("../ressources/man/manADMIN.txt");
+            while(ready(f)){
+                logCache+=readLine(f)+"\n";
             }
-        } else if(equals(params[0], "set")){
-            if(isNumeric(params[2])){
-                int setVal = Integer.parseInt(params[2]);
-                if(equals(params[1], "fe")){
-                    player.ownedResources[0] = setVal;
-                    logCache = "Iron";
-                } else if(equals(params[1], "h")){
-                    player.ownedResources[1] = setVal;
-                    logCache = "Hydrogen";
-                } else if(equals(params[1], "o")){
-                    player.ownedResources[2] = setVal;
-                    logCache = "Oxygen";
-                } else if(equals(params[1], "sight")){
-                    player.ship.SightRange = setVal;
-                    logCache = "Sight";
+        } else if(equals(params[0], "set") || equals(params[0], "log")){
+            int cmd_start = INPUT_isValidCoord(params[1]) ? 1 : 0;
+            String cmd_stringValue = "";
+            if(length(params)>2+cmd_start){
+                cmd_stringValue = params[2+cmd_start];
+            }
+            Vector2 cmd_vectorValue = VECTOR2_NULL;
+            int cmd_value = 0;
+            if(isNumeric(cmd_stringValue)){
+                cmd_value = Integer.parseInt(cmd_stringValue);
+            } else if(INPUT_isValidCoord(cmd_stringValue, sys_current)){
+                cmd_vectorValue = INPUT_inputToVector2(cmd_stringValue);
+            }
+
+            String cmd_param = params[1+cmd_start];
+            if(cmd_start == 1){
+                Vector2 cmd_coord = INPUT_inputToVector2(params[1]);
+                SysObject cmd_target = sys_current[cmd_coord.y][cmd_coord.x];
+                if(equals(params[0], "log")){
+                    if(equals(cmd_param, CMDP_IRON)){
+                        logCache = ""+cmd_target.availableResources[0];
+                    } else if(equals(cmd_param, CMDP_HYDROGEN)){
+                        logCache = ""+cmd_target.availableResources[1];
+                    } else if(equals(cmd_param, CMDP_OXYGEN)){
+                        logCache = ""+cmd_target.availableResources[2];
+                    } else if(equals(cmd_param, CMDP_APPROACHRISKS)){
+                        logCache = ""+cmd_target.approachRisks;
+                    } else if(equals(cmd_param, CMDP_LANDINGRISKS)){
+                        logCache = ""+cmd_target.landingRisks;
+                    } else if(equals(cmd_param, CMDP_MASS)){
+                        logCache = ""+cmd_target.mass;
+                    } else if(equals(cmd_param, CMDP_NAME)){
+                        logCache = ""+cmd_target.name;
+                    } else if(equals(cmd_param, CMDP_TYPE)){
+                        logCache = ""+cmd_target.type.type.displayType;
+                    } else if(equals(cmd_param, CMDP_VISITED)){
+                        logCache = ""+cmd_target.visited;
+                    } else if(equals(cmd_param, CMDP_APPROACHED)){
+                        logCache = ""+cmd_target.approached;
+                    } else {
+                        logCache = "Unknown parameter";
+                    }
+                } else if(equals(params[0], "set")){
+                    logCache = " of object in " + cmd_coord.x + ":" + cmd_coord.y;
+                    if(isNumeric(cmd_stringValue)){
+                        if(equals(cmd_param, CMDP_IRON)){
+                            cmd_target.availableResources[0] = cmd_value;
+                            logCache = "Iron" + logCache;
+                        } else if(equals(cmd_param, CMDP_HYDROGEN)){
+                            cmd_target.availableResources[1] = cmd_value;
+                            logCache = "Hydrogen" + logCache;
+                        } else if(equals(cmd_param, CMDP_OXYGEN)){
+                            cmd_target.availableResources[2] = cmd_value;
+                            logCache = "Oxygen" + logCache;
+                        } else if(equals(cmd_param, CMDP_APPROACHRISKS)){
+                            cmd_target.approachRisks = cmd_value;
+                            logCache = "Approach Risks" + logCache;
+                        } else if(equals(cmd_param, CMDP_LANDINGRISKS)){
+                            cmd_target.landingRisks = cmd_value;
+                            logCache = "Landing Risks" + logCache;
+                        } else if(equals(cmd_param, CMDP_MASS)){
+                            cmd_target.mass = cmd_value;
+                            logCache = "Mass" + logCache;
+                        } else if(equals(cmd_param, CMDP_TYPE)){
+                            logCache = "(-) object type cannot be set.";
+                        } else if(equals(cmd_param, CMDP_VISITED)){
+                            cmd_target.visited = cmd_value != 0;
+                            logCache = "Visited" + logCache;
+                        } else if(equals(cmd_param, CMDP_APPROACHED)){
+                            cmd_target.approached = cmd_value != 0;
+                            logCache = "Approached" + logCache;
+                        } else {
+                            logCache = "";
+                        }
+                    } else {
+                        if(equals(cmd_param, CMDP_NAME)){
+                            cmd_target.name = cmd_stringValue;
+                            logCache = "Name" + logCache;
+                        } else {
+                            logCache = "";
+                        }
+                    } 
+
+                    GMP_adminConsoleSetCache();
                 }
-            } else if(INPUT_isValidCoord(params[2], sys_current)){
-                Vector2 coord = INPUT_inputToVector2(params[2]);
-                if(equals(params[1], "pPos")){
-                    player.pos = coord;
-                    logCache = "Player position";
+            } else {
+                if(equals(params[0], "log")){
+                    if(equals(cmd_param, CMDP_IRON)){
+                        logCache = ""+player.ownedResources[0];
+                    } else if(equals(cmd_param, CMDP_HYDROGEN)){
+                        logCache = ""+player.ownedResources[1];
+                    } else if(equals(cmd_param, CMDP_OXYGEN)){
+                        logCache = ""+player.ownedResources[2];
+                    } else if(equals(cmd_param, CMDP_POSITION)){
+                        logCache = ""+player.pos.x+":"+player.pos.y;
+                    } else if(equals(cmd_param, CMDP_HPS)){
+                        logCache = ""+player.ship.HPs;
+                    } else if(equals(cmd_param, CMDP_MAXHPS)){
+                        logCache = ""+player.ship.MaxHPs;
+                    } else if(equals(cmd_param, CMDP_NAME)){
+                        logCache = ""+player.name;
+                    } else if(equals(cmd_param, CMDP_SIGHTRANGE)){
+                        logCache = ""+player.ship.SightRange;
+                    } else if(equals(cmd_param, CMDP_STORAGE)){
+                        logCache = ""+player.ship.Storage;
+                    } else if(equals(cmd_param, CMDP_APPROACHED)){
+                        logCache = ""+player.nearbySOstatus[0];
+                    } else if(equals(cmd_param, CMDP_LANDED)){
+                        logCache = ""+player.nearbySOstatus[1];
+                    } else {
+                        logCache = "Unknown parameter";
+                    }
+                } else if(equals(params[0], "set")){
+                    logCache = " of player " + player.name;
+                    if(isNumeric(cmd_stringValue)){
+                        if(equals(cmd_param, CMDP_IRON)){
+                            player.ownedResources[0] = cmd_value;
+                            logCache = "Iron" + logCache;
+                        } else if(equals(cmd_param, CMDP_HYDROGEN)){
+                            player.ownedResources[1] = cmd_value;
+                            logCache = "Hydrogen" + logCache;
+                        } else if(equals(cmd_param, CMDP_OXYGEN)){
+                            player.ownedResources[2] = cmd_value;
+                            logCache = "Oxygen" + logCache;
+                        } else if(equals(cmd_param, CMDP_HPS)){
+                            player.ship.HPs = cmd_value;
+                            logCache = "HPs" + logCache;
+                        } else if(equals(cmd_param, CMDP_MAXHPS)){
+                            player.ship.MaxHPs = cmd_value;
+                            logCache = "MaxHPs" + logCache;
+                        } else if(equals(cmd_param, CMDP_SIGHTRANGE)){
+                            player.ship.SightRange = cmd_value;
+                            logCache = "Sight Range" + logCache;
+                        } else if(equals(cmd_param, CMDP_STORAGE)){
+                            player.ship.Storage = cmd_value;
+                            logCache = "Storage" + logCache;
+                        } else if(equals(cmd_param, CMDP_APPROACHED)){
+                            player.nearbySOstatus[0] = cmd_value != 0;
+                            logCache = "Approach Status" + logCache;
+                        } else if(equals(cmd_param, CMDP_LANDED)){
+                            player.nearbySOstatus[1] = cmd_value != 0;
+                            logCache = "Land Status" + logCache;
+                        } else {
+                            logCache = "";
+                        }
+                    } else if (INPUT_isValidCoord(cmd_stringValue)){
+                        if(equals(cmd_param, CMDP_POSITION)){
+                            player.pos = cmd_vectorValue;
+                            logCache = "Approach Risks" + logCache;
+                        } else {
+                            logCache = "";
+                        }
+                    } else {
+                        if(equals(cmd_param, CMDP_NAME)){
+                            player.name = cmd_stringValue;
+                            logCache = "Name" + logCache;
+                        } else {
+                            logCache = "";
+                        }
+                    }
+
+                    GMP_adminConsoleSetCache();
                 }
             }
-            if(equals(logCache, "")){
-                logCache = "Error in the input";
-            } else{
-                logCache = "Successfully set " + logCache;
-            }
-            
+        }
+    }
+
+    void GMP_adminConsoleSetCache(){
+        if(equals(logCache, "")){
+            logCache = "Error in the input";
+        } else{
+            logCache = "Successfully set " + logCache;
         }
     }
 
@@ -1679,6 +1843,8 @@ class Main extends Program {
     //#endregion
 
     //#region Game global variables
+    boolean isAdmin;
+
     String input;
 
     Player player;
@@ -1727,8 +1893,9 @@ class Main extends Program {
         }
         readString();
         print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        println("Entrez votre nom de joueur aa: ");
+        println("Entrez votre nom de joueur : ");
         player = initPlayer(readString(), newVector2(20, 16));
+        isAdmin = equals(player.name, "admin");
         player.ship.HPs = 50;
         sys_current = SYS_generateSystem();
         GMP_system();
