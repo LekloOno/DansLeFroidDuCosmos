@@ -270,7 +270,7 @@ class Main extends Program {
         }
 
         if(mode == 0){
-            return val;
+            return Math.min(val, SHIP_ironRequired(player.ship.MaxHPs - player.ship.HPs));
         } else if (mode == 1){
             if(val < (player.ship.HPs*100/player.ship.MaxHPs)){
                 return -2;
