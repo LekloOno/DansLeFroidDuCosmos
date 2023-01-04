@@ -12,7 +12,7 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
-        boolean confirm(String inp){
+        boolean confirm(String input){
             return equals(input, "1") || equals(input, "");
         }
 
@@ -554,7 +554,7 @@ class Main extends Program {
         SO_GenSettings genSet = new SO_GenSettings();
         genSet.MassMin = _massMin;
         genSet.MassMax = _massMax;
-        genSet.MassAvgW = _massAvgw;
+        genSet.MassAvgW = _massAvgw;    //will be used in the generation of a random mass to tweak the averrage, see https://www.desmos.com/calculator/pi2bmjrmfi?lang=fr
         genSet.ResMin = _resMin;
         genSet.ResMax = _resMax;
 
@@ -571,10 +571,10 @@ class Main extends Program {
     //#endregion
     //#region Telluric
     final SO_GenSettings TEL_GENSET = newGenSettings(
-        22.6,                   //Base on Kepler-138b
-        26,                     //Based on Kepler-10c
-        0.55,
-        newResources(10, 0, 0),
+        15,                         //22.6 Base on Kepler-138b, 15 based on Deimos as a moon
+        26,                         //Based on Kepler-10c
+        0.35,                      //Gives an average around 23.5
+        newResources(6, 0, 0),
         newResources(25, 0, 0)
     );
     //#endregion
@@ -589,11 +589,11 @@ class Main extends Program {
     //#endregion
     //#region Ice Giant
     final SO_GenSettings ICE_GENSET = newGenSettings(
-        -1,
-        -1,
-        -1,
-        newResources(),
-        newResources()
+        15,
+        26,
+        0.35,
+        newResources(1, 6, 3),
+        newResources(5, 26, 13)
     );
         //hydrogen is just the double of oxygen
     //#endregion
@@ -626,11 +626,11 @@ class Main extends Program {
     //#endregion
     //#region Star
     final SO_GenSettings STA_GENSET = newGenSettings(
-        -1,
-        -1,
-        -1,
-        newResources(),
-        newResources()
+        29,
+        32,
+        1.5,
+        newResources(10, 15, 0),
+        newResources(40, 50, 0)
     );
     //#endregion
 
@@ -1642,13 +1642,16 @@ class Main extends Program {
                         } else if(equals(cmd_param, CMDP_LANDED)){
                             player.nearbySOstatus[1] = cmd_value != 0;
                             logCache = "Land Status" + logCache;
+                        } else if(equals(cmd_param, "xpos")){
+                            player.pos.x += cmd_value;
+                            logCache = "Xpos" + logCache;
                         } else {
                             logCache = "";
                         }
                     } else if (INPUT_isValidCoord(cmd_stringValue)){
                         if(equals(cmd_param, CMDP_POSITION)){
                             player.pos = cmd_vectorValue;
-                            logCache = "Approach Risks" + logCache;
+                            logCache = "Position" + logCache;
                         } else {
                             logCache = "";
                         }

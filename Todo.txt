@@ -1,0 +1,71 @@
+V1.0 - NECESSAIRE
+
+progress    - Décomposition
+done        - Volume de Travail
+TODO        - Externalisation et persistance des données            Enregistrer une partie = système, player + enregistrer un score
+TODO        - Clareté du code                                       variable "approached" qui peut porter à confusion entre player et sysobject
+TODO        - Tests                                                 Envie de crever
+done        - Structure de l'archive
+progress    - README
+progress    - Contrôle de saisie                                    Toutes les saisies sont faites en string de toute manière - Erreur pour une chaîne vide dans la saisie de réparation
+
+Gameplay -
+    Terminer la génération de tous les types d'objets actuels (géantes de glaces manquantes)
+    Interraction avec les objets
+    Affichage des données de jeu des planète sur les cartes d'objet
+    Evaluation du coup en temps de certaines actions, relation avec un coup en oxygène
+    Gestion de fin de partie - destruction du vaisseau ou fin d'oxygène
+
+
+Pédagogique - Ajout de données
+    Données pour les différents types d'objets sur leurs cartes.
+
+
+_____________________________________________________________________________________________________________________________
+
+V1.1
+
+Gameplay -
+    Accès à un wiki depuis le menu de jeu.
+
+Pédagogique -
+    Lorsque le joueur visite un objet qu'il n'a pas visité auparavant, il débloque une portion d'information aléatoire concernant le type d'objet.
+    Le joueur a maintenant pour objectif secondaire de compléter le codex.
+
+
+
+
+V1.2
+
+Gameplay -
+    Ajout des objets movibles - astéroïdes, comètes, épave
+    Ajout de jumelles terrestre = tellurique + joker à oxygène
+
+
+
+
+V1.3
+Gameplay -
+    Amélioration de la console d'administrateur permettant de modifier la grille de jeu, et d'en enregistrer une ~= éditeur de système en run time.
+
+Pédagogique -
+    Partie du codex interactives - sous la forme d'une instance de système dans lequel le joueur peut se déplacer librement, et qui représente un système et ses informations.
+    Par exemple, le système solaire, justement créé et enregistré au préalable via l'éditeur système.
+
+
+
+
+_____________________________________________________________________________________________________________________________
+
+
+V2.0
+Gameplay -
+    Grille infinies - nécessite de réadapter l'affichage de la grille pour adapter les rangs de coordonnées à la position,
+    et de générer de nouvelles parties de grille selon la position du joueur.
+
+
+
+
+V2.1
+Gameplay -
+    Objectif principal - atteindre la terre le plus rapidement possible.
