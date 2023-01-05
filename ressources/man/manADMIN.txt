@@ -3,11 +3,13 @@ ADMIN -
 
 This game provides a brief implementation of an admin console, allowing for better testing and debugging.
 To use it, the current game session must be registered under the name of "admin".
+Admin commands must be entered in the main Game Menu input listener, it will not work within a specific game menu, such as repair menu or travel menu.
 
 COMMANDS -
 
     - help
     Display this help manual.
+
 
     - log [TARGET] PARAM
     Display the value of the specified PARAM parameter in the next Log Cache.
@@ -21,6 +23,13 @@ COMMANDS -
     If no target is given, it will target the player, otherwise, it will target the SysObject at the given position.
 
     See - PARAM, - TARGET and - VALUE
+
+
+    - gen TARGET [GENSEED]
+    Generate a SysObject at the given position TARGET with the given GENSEED.
+    Entering gen command with no genseed will destroy the object at the given position, equivalent to gen TARGET void.
+
+    See - TARGET, - GENSEED
 
 
 
@@ -74,5 +83,17 @@ COMMANDS -
 
     String -
     Simply enter the string value.
+
+
+
+- TYPE
+
+    Represents a sysobject type or seed.
+
+    void    - Destroy the sysObject
+    star    - Generic Star type.
+    gas     - --------Gas Giant-
+    tell    - --------Telluric--
+    ice     - --------Ice Planet 
 
 ______________________________________________________________________________________________________________________________________________________________

@@ -1,3 +1,4 @@
+import java.io.ObjectStreamField;
 import java.nio.channels.IllegalChannelGroupException;
 
 import javax.naming.ldap.InitialLdapContext;
@@ -59,6 +60,23 @@ class Main extends Program {
             }
     
             return a;
+        }
+
+        String[] enlargeArray(String[] array, int newTiles){
+            int len = length(array);
+            String[] greaterArray = new String[len + newTiles];
+            for(int i = 0; i<len; i++){
+                greaterArray[i] = array[i];
+            }
+            return greaterArray;
+        }
+
+        boolean isIn(ObjectLabel[] tab, ObjectLabel e){
+            int i = 0;
+            while(i<length(tab)-1 && tab[i] != e){
+                i++;
+            }
+            return length(tab)>0 && tab[i] == e;
         }
 
         //#region MATHS
@@ -367,15 +385,36 @@ class Main extends Program {
     }
 
     boolean PLAYER_move(Player p, Vector2 b){
-        int cost = (int)Math.ceil(SHIP_hydrogenRequired(VECTOR2_distance(p.pos, b)));
+        int cost = SHIP_hydrogenRequired(VECTOR2_distance(p.pos, b));
 
         boolean canMove = cost <= p.ownedResources[1];
         if(canMove){
             p.ownedResources[1] -= cost;
             p.pos = b;
+            sys_current[b.y][b.x].visited = true;
         }
         
         return canMove;
+    }
+
+    boolean PLAYER_approach(Player p){
+        boolean canApproach = p.ownedResources[1] >= APPROACH_COST;
+        if(canApproach){
+            p.ownedResources[1] -= APPROACH_COST;
+            p.nearbySOstatus[0] = true;
+        }
+        return canApproach;
+    }
+
+    boolean PLAYER_land(Player p, SysObject o){
+        int cost = SHIP_hydrogenRequired(o);
+
+        boolean canLand = cost <= p.ownedResources[1];
+        if(canLand){
+            p.ownedResources[1] -= cost;
+            p.nearbySOstatus[1] = true;
+        }
+        return canLand;
     }
 
     boolean PLAYER_repair(Player p, int Fe){
@@ -549,6 +588,8 @@ class Main extends Program {
 
     //#region System Object Generation Settings
     final double RES_RNG_RANGE = 0.12;
+
+    ObjectLabel[] unlandable = new ObjectLabel[]{ObjectLabel.Gasgiant, ObjectLabel.Star};
 
     SO_GenSettings newGenSettings(double _massMin, double _massMax, double _massAvgw, int[] _resMin, int[] _resMax){
         SO_GenSettings genSet = new SO_GenSettings();
@@ -928,6 +969,11 @@ class Main extends Program {
         return  (int)Math.ceil(Math.pow(distance,0.8)*4);
     }
 
+    int SHIP_hydrogenRequired(SysObject o){
+        //Gives the landing cost of an object https://www.desmos.com/calculator/ucxra9uldq
+        return (int)Math.ceil(Math.pow(o.mass/12.0, 4));
+    }
+
     int SHIP_ironRequired(int HPs){
         //Convert a given HPs amount to a Fe cost
         return HPs / 2;
@@ -937,11 +983,10 @@ class Main extends Program {
         return Fe * 2;
     }
 
-    /* 
-    String[] SHIP_displayState(Ship s, int length){
-        //Display ship status, line by line
-        return;
-    }*/
+    boolean SHIP_InflictDamage(Ship s, int damage){
+        s.HPs -= damage;
+        return s.HPs > 0;
+    }
 
     //#endregion
 
@@ -955,6 +1000,44 @@ class Main extends Program {
             card.dimension = dim;
 
             return card;
+        }
+
+        Card newCard(String[] lines, Vector2 dim, boolean resize, boolean cut){
+            if(!cut){
+                String[] resizedLines = new String[dim.y];
+                int y = 0;
+                int added = 0;
+                while(y+added<length(lines)){
+                    String processingLine = lines[y];
+                    if(length(processingLine) > dim.x){
+                        processingLine = substring(processingLine, 0, dim.x);
+                    }
+                    for(int c = length(lines[y]); c<dim.x; c++){
+                        processingLine += " ";
+                    }
+                    resizedLines[y+added] = processingLine;
+
+                    int toAdd = (length(lines[y]))/dim.x;
+                    int currentAdd = 1;
+                    if(toAdd > 0){
+                        while(currentAdd<=toAdd){
+                            added ++;
+                            resizedLines[y+added] = substring(lines[y],currentAdd*dim.x,Math.min(currentAdd*dim.x + dim.x, length(lines[y])));
+                            currentAdd++;
+                        }
+                        for(int c = length(resizedLines[y+added]); c<dim.x; c++){
+                            processingLine += " ";
+                        }
+                    }
+                    
+                    y++;
+                }
+
+                return newCard(resizedLines, dim);
+            }
+            else {
+                return newCard(lines, dim, resize);
+            }
         }
 
         Card newCard(String[] lines, Vector2 dim, boolean resize){
@@ -1213,10 +1296,75 @@ class Main extends Program {
             return HUD_menuCard(actions, "- Entrez les coordonnées de destination (x:y) -");
         }
 
+        Card HUD_confirmMenu(String call){
+            return HUD_menuCard(ACTIONS_YESNO, call, false);
+        }
+
         Card HUD_confirmMoveMenu(Vector2 dest){
             double distance = VECTOR2_distance(player.pos, dest);
-            String call = "- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -";
-            return HUD_menuCard(ACTIONS_YESNO, call, false);
+            return HUD_confirmMenu("- Le voyage en " + dest.x + ":" + dest.y + " consommera " + SHIP_hydrogenRequired(distance) + " unités d'hydrogène -");
+        }
+
+        Card HUD_confirmApproachMenu(){
+            return HUD_confirmMenu("- Entrez en orbite consommera " + APPROACH_COST + " unités d'hydrogène -");
+        }
+
+        Card HUD_confirmLandMenu(int cost){
+            return HUD_confirmMenu("- " + cost + " unités d'hydrogène sont nécessaires pour atterrir et redécoller -");
+        }
+
+        Card HUD_approachMenu(SysObject o){
+            String extractH = "";
+            if(isIn(unlandable, o.type.type)){
+                extractH = "Extraire de l'hydrogène";
+            }
+
+            String[] actions = new String[]{
+                "Annuler",
+                "Atterrir",
+                extractH
+            };
+
+            return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
+        }
+
+        Card HUD_interactObjMenu(SysObject o){
+            String[] actions = new String[]{
+                "Quitter L'orbite",
+                player.nearbySOstatus[1] ? "Décoler" : "Atterrir",
+                (player.nearbySOstatus[0] && isIn(unlandable, o.type.type)) || player.nearbySOstatus[1] && o.type.type == ObjectLabel.Icegiant ? "Extraire de l'hydrogène" : "-(indisponible)",
+                (player.nearbySOstatus[1] && o.availableResources[0]>0) || o.type.type == ObjectLabel.Star ? "Extraire du fer" : "-(indisponible)",
+                player.nearbySOstatus[1] && o.availableResources[2]>0 ? "Extraire de l'oxygène" : "-(indisponible)"
+            };
+
+            return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
+        }
+
+        Card HUD_triedToLandUnlandable(SysObject o){
+            String intro = "";
+            String risk = "";
+            String nickname = "";
+
+            if(o.type.type == ObjectLabel.Star){
+                intro = "approchez lentement de la surface de l'étoile, la température extérieure s'envole";
+                risk = "fondre sur lui même !";
+                nickname = "du monstre de flammes.";
+            } else {
+                intro = "enfoncez lentement dans l'épaisse athmosphère de la géante gazeuse, la pression ne cesse d'augmenter";
+                risk = "se faire compacter, vous dedans !";
+                nickname = "du titan de vents.";
+            }
+            String[] lines = new String[]{
+                "Alors que vous vous  " + intro + ", les appareils sifflent et les alarmes s'excitent.",
+                "Si vous descendez plus bas, c'est certains, tout le vaisseau va " + risk,
+                "Dans la panique, vous vous extirpez de justesse à la gravité " + nickname + ". Mais non sans dégâts ..",
+                "",
+                "",
+                "",
+                "",
+                ""
+            };
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, 8), true, false);
         }
 
         Card HUD_inspectMenu(){
@@ -1365,6 +1513,7 @@ class Main extends Program {
             String store = "";
             String total = "";
             String hp = "";
+            String sign = "";
 
             String[] res = new String[]{
                 player.ownedResources[0]+"",
@@ -1376,25 +1525,29 @@ class Main extends Program {
             for(int i = 0; i<length(res); i++){
                 totalPrev += resPreview[i];
                 totalRes += player.ownedResources[i];
+                sign = resPreview[i] > 0 ? "+" : "";
                 if(resPreview[i] != 0){
-                    res[i] = player.ownedResources[i] - resPreview[i] + "(-" + resPreview[i] + ")";
+                    res[i] = (player.ownedResources[i] + resPreview[i]) + "(" + sign + resPreview[i] + ")";
                 }
             }
 
             if(totalPrev != 0){
-                total = totalRes-totalPrev + "(-" + totalPrev + ")";
+                sign = totalPrev > 0 ? "+" : ""; 
+                total = (totalRes+totalPrev) + "(" + sign + totalPrev + ")";
             } else {
                 total = totalRes + "";
             }
 
             if(hpPreview != 0){
-                hp = (((player.ship.HPs+hpPreview)*100)/player.ship.MaxHPs) + "(+" + hpPreview + ")";
+                sign = hpPreview > 0 ? "+" : "";
+                hp = (((player.ship.HPs+hpPreview)*100)/player.ship.MaxHPs) + "(" + sign + hpPreview*100/player.ship.MaxHPs + ")";
             } else {
                 hp = player.ship.HPs*100/player.ship.MaxHPs + "";
             }
 
             if(storePreview != 0){
-                store = player.ship.Storage+storePreview + "(+" + storePreview + ")";
+                sign = storePreview > 0 ? "+" : "";
+                store = player.ship.Storage+storePreview + "(" + sign + storePreview + ")";
             } else {
                 store = player.ship.Storage+"";
             }
@@ -1435,6 +1588,11 @@ class Main extends Program {
     //#endregion
 
     //#region GMP   | RUNTIME GAMEPLAY
+    void GMP_InflictDamage(int damage){
+        if(!SHIP_InflictDamage(player.ship, damage)){
+            //GMP_ShipDestroyed();
+        }
+    }
     void GMP_insufficientFE(int amount){
         win_botLeft = HUD_insufficientFe(amount);
         GMP_displayHUD();
@@ -1457,7 +1615,7 @@ class Main extends Program {
         } else if(equals(input, "2")){
             GMP_inspect();
         } else if(equals(input, "3")){
-            //GMP_approach();
+            GMP_approach();
         } else if(equals(input, "4")){
             GMP_manageShip();
         } else if(isAdmin){
@@ -1488,6 +1646,15 @@ class Main extends Program {
     final String CMDP_SIGHTRANGE = "sight";
     final String CMDP_STORAGE = "store";
     final String CMDP_LANDED = "land";
+
+    //GEN
+    final String CMDG_VOID = "void";
+    final String CMDG_STAR = "star";
+    final String CMDG_TELLURIC = "tell";
+    final String CMDG_GASGIANT = "gas";
+    final String CMDG_ICEPLANET = "ice";
+    final String CMDG_ASTEROID = "astd";
+    final String CMDG_COMET = "comet";
     //#endregion
 
     void GMP_adminConsole(String[] params){
@@ -1667,7 +1834,26 @@ class Main extends Program {
                     GMP_adminConsoleSetCache();
                 }
             }
+        } else if(equals(params[0], "gen")){
+            GMP_adminConsoleGEN(params);
         }
+    }
+
+    void GMP_adminConsoleGEN(String[] params){
+        Vector2 cmd_coord = INPUT_inputToVector2(params[1]);
+        ObjectLabel cmdg_label = ObjectLabel.Void;
+        if(length(params)>2 && !equals(params[2], CMDG_VOID)){
+            if(equals(params[2], CMDG_STAR)){
+                cmdg_label = ObjectLabel.Star;
+            } else if(equals(params[2], CMDG_TELLURIC)){
+                cmdg_label = ObjectLabel.Telluric;
+            } else if(equals(params[2], CMDG_GASGIANT)){
+                cmdg_label = ObjectLabel.Gasgiant;
+            } else if(equals(params[2], CMDG_ICEPLANET)){
+                cmdg_label = ObjectLabel.Icegiant;
+            }
+        }
+        sys_current[cmd_coord.y][cmd_coord.x] = newSysObject(cmdg_label);
     }
 
     void GMP_adminConsoleSetCache(){
@@ -1710,7 +1896,7 @@ class Main extends Program {
             Vector2 inputCoord = INPUT_inputToVector2(input);
             int cost = SHIP_hydrogenRequired(VECTOR2_distance(player.pos, inputCoord));
             win_botLeft = HUD_confirmMoveMenu(inputCoord);
-            win_botRight = HUD_Status(new int[]{0, cost, 0});
+            win_botRight = HUD_Status(new int[]{0, -cost, 0});
 
             GMP_displayHUD();
 
@@ -1725,6 +1911,76 @@ class Main extends Program {
             }
         }
         GMP_system();
+    }
+
+    final int APPROACH_COST = SHIP_hydrogenRequired(1)/2;
+
+    void GMP_approach(){
+        SysObject o = sys_current[player.pos.y][player.pos.x];
+        if(o.type.type != ObjectLabel.Void){
+            win_botLeft = HUD_confirmApproachMenu();
+            win_botRight = HUD_Status(new int[]{0, -APPROACH_COST, 0});
+
+            GMP_displayHUD();
+
+            input = readString();
+
+            if(confirm(input)){
+                if(PLAYER_approach(player)){
+                    GMP_approached(o);
+                } else {
+                    win_botLeft = HUD_insufficientHydrogen(APPROACH_COST);
+                    GMP_displayHUD();
+                    waitSeconds(TEMPWINDOW);
+                }          
+            }
+        }
+        GMP_system();
+    }
+
+    void GMP_approached(SysObject o){
+        win_botRight = HUD_Status();
+        win_botLeft = HUD_interactObjMenu(o);
+        GMP_displayHUD();
+
+        input = readString();
+
+        if(equals(input, "1")){
+            GMP_land(o);
+        } else if(equals(input, "2") && isIn(unlandable, o.type.type)) {
+            //GMP_extract(o);
+        }
+    }
+
+    final int UNLANDABLE_DAMAGE = 20;
+
+    void GMP_land(SysObject o){
+        int cost = SHIP_hydrogenRequired(o);
+        win_botLeft = HUD_confirmLandMenu(cost);
+        win_botRight = HUD_Status(new int[]{0, -cost, 0});
+
+        GMP_displayHUD();
+
+        input = readString();
+
+        if(confirm(input)){
+            if(!PLAYER_land(player, o)){
+                win_botLeft = HUD_insufficientHydrogen(cost);
+                GMP_displayHUD();
+                waitSeconds(TEMPWINDOW);
+            } else if(isIn(unlandable, o.type.type)){
+                player.nearbySOstatus[1] = false;
+                win_botLeft = HUD_triedToLandUnlandable(o);
+                win_botRight = HUD_Status(emptyResources(), -UNLANDABLE_DAMAGE, 0);
+                GMP_InflictDamage(UNLANDABLE_DAMAGE);
+                GMP_displayHUD();
+                readString();
+            } else {
+                //GMP_landed(o);
+            }
+        }
+
+        GMP_approached(o);
     }
 
     //#region Ship Management
@@ -1761,7 +2017,7 @@ class Main extends Program {
         int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
         if(feAmount>0){
             win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
-            win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
+            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
 
             GMP_displayHUD();
 
@@ -1783,7 +2039,7 @@ class Main extends Program {
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input);
             win_botLeft = HUD_shipReinforceConfirmMenu();
-            win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0});
             GMP_displayHUD();
 
             input = readString();
@@ -1804,7 +2060,7 @@ class Main extends Program {
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input)*SHIP_SIGHTTOIRON;
             win_botLeft = HUD_shipTelescopeUpgradeConfirmMenu();
-            win_botRight = HUD_Status(new int[]{feAmount, 0, 0});
+            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0});
             GMP_displayHUD();
 
             input = readString();
@@ -1825,7 +2081,7 @@ class Main extends Program {
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input)*SHIP_STORAGETOIRON;
             win_botLeft = HUD_shipStorageUpgradeConfirmMenu();
-            win_botRight = HUD_Status(new int[]{feAmount, 0, 0}, 0, Integer.parseInt(input));
+            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0}, 0, Integer.parseInt(input));
             GMP_displayHUD();
 
             input = readString();
