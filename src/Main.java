@@ -34,6 +34,16 @@ class Main extends Program {
             return c <= '9' && c >= '0';
         }
 
+        final String[] COMMAND_PREFIXES = new String[]{
+            "log",
+            "set",
+            "gen"
+        };
+
+        boolean isCommand(String s){
+            return isIn(COMMAND_PREFIXES, s.split(" ")[0]);
+        }
+
         String setAsTableLine(String[] line, int colWidth){
             String s = "";
             for(int i = 0; i<length(line); i ++){
@@ -77,6 +87,14 @@ class Main extends Program {
                 i++;
             }
             return length(tab)>0 && tab[i] == e;
+        }
+
+        boolean isIn(String[] tab, String e){
+            int i = 0;
+            while(i<length(tab)-1 && !equals(tab[i], e)){
+                i++;
+            }
+            return length(tab)>0 && equals(tab[i], e);
         }
 
         //#region MATHS
@@ -269,7 +287,9 @@ class Main extends Program {
         int val = 0;
         int mode = 0;
 
-        if(charAt(rep, length(rep)-1) == '%'){
+        if(length(rep)<1){
+            return -1;
+        } else if(charAt(rep, length(rep)-1) == '%'){
             num = substring(rep, 0, length(rep)-1);
             mode = 1;
         } else if(charAt(rep, 0) == '+'){
@@ -412,6 +432,7 @@ class Main extends Program {
         boolean canLand = cost <= p.ownedResources[1];
         if(canLand){
             p.ownedResources[1] -= cost;
+            p.nearbySOstatus[0] = false;
             p.nearbySOstatus[1] = true;
         }
         return canLand;
@@ -1330,12 +1351,14 @@ class Main extends Program {
 
         Card HUD_interactObjMenu(SysObject o){
             String[] actions = new String[]{
-                "Quitter L'orbite",
+                player.nearbySOstatus[0] ? "Quitter L'orbite" : "-",
                 player.nearbySOstatus[1] ? "Décoler" : "Atterrir",
-                (player.nearbySOstatus[0] && isIn(unlandable, o.type.type)) || player.nearbySOstatus[1] && o.type.type == ObjectLabel.Icegiant ? "Extraire de l'hydrogène" : "-(indisponible)",
-                (player.nearbySOstatus[1] && o.availableResources[0]>0) || o.type.type == ObjectLabel.Star ? "Extraire du fer" : "-(indisponible)",
-                player.nearbySOstatus[1] && o.availableResources[2]>0 ? "Extraire de l'oxygène" : "-(indisponible)"
+                (player.nearbySOstatus[0] && isIn(unlandable, o.type.type)) || player.nearbySOstatus[1] && o.type.type == ObjectLabel.Icegiant ? "Extraire de l'hydrogène" : "-",
+                (player.nearbySOstatus[1] && o.availableResources[0]>0) || o.type.type == ObjectLabel.Star ? "Extraire du fer" : "-",
+                player.nearbySOstatus[1] && o.availableResources[2]>0 ? "Extraire de l'oxygène" : "-"
             };
+
+            println((player.nearbySOstatus[0]) + " && " + isIn(unlandable, o.type.type) + " || " + player.nearbySOstatus[1] + " && " + (o.type.type == ObjectLabel.Icegiant));
 
             return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
         }
@@ -1606,8 +1629,6 @@ class Main extends Program {
         win_botRight = HUD_Status();
 
         GMP_displayHUD();
-        println(logCache);
-        logCache = "";
 
         input = readString();
         if(equals(input,"1")){
@@ -1618,9 +1639,9 @@ class Main extends Program {
             GMP_approach();
         } else if(equals(input, "4")){
             GMP_manageShip();
-        } else if(isAdmin){
+        } /*else if(isAdmin){
             GMP_adminConsole(input.split(" "));
-        }
+        }*/
         GMP_system();
     }
 
@@ -1882,7 +1903,11 @@ class Main extends Program {
 
             input = readString();
         }
-        GMP_system();
+        if(isCommand(input)){
+            GMP_inspect();
+        } else {
+            GMP_system();
+        }
     }
 
     void GMP_move(){
@@ -1909,8 +1934,12 @@ class Main extends Program {
                     waitSeconds(TEMPWINDOW);
                 }
             }
+            GMP_system();
+        } else if(isCommand(input)){
+            GMP_move();
+        } else {
+            GMP_system();
         }
-        GMP_system();
     }
 
     final int APPROACH_COST = SHIP_hydrogenRequired(1)/2;
@@ -1949,6 +1978,8 @@ class Main extends Program {
             GMP_land(o);
         } else if(equals(input, "2") && isIn(unlandable, o.type.type)) {
             //GMP_extract(o);
+        } else if(isCommand(input)){
+            GMP_approached(o);
         }
     }
 
@@ -1968,19 +1999,40 @@ class Main extends Program {
                 win_botLeft = HUD_insufficientHydrogen(cost);
                 GMP_displayHUD();
                 waitSeconds(TEMPWINDOW);
+                GMP_approached(o);
             } else if(isIn(unlandable, o.type.type)){
                 player.nearbySOstatus[1] = false;
+                player.nearbySOstatus[0] = true;
                 win_botLeft = HUD_triedToLandUnlandable(o);
                 win_botRight = HUD_Status(emptyResources(), -UNLANDABLE_DAMAGE, 0);
                 GMP_InflictDamage(UNLANDABLE_DAMAGE);
                 GMP_displayHUD();
                 readString();
+                GMP_approached(o);
             } else {
-                //GMP_landed(o);
+                GMP_landed(o);
             }
         }
+    }
 
-        GMP_approached(o);
+    void GMP_landed(SysObject o){
+        win_botRight = HUD_Status();
+        win_botLeft = HUD_interactObjMenu(o);
+        GMP_displayHUD();
+
+        input = readString();
+
+        if(equals(input, "1")){
+            player.nearbySOstatus[0] = true;
+            player.nearbySOstatus[1] = false;
+            GMP_approached(o);
+        } else if(equals(input, "3") && o.availableResources[0]>0) {
+            //GMP_extractFE(o);
+        } else if(equals(input, "4") && o.availableResources[2]>0) {
+            //GMP_extractO(o);
+        } else {
+            GMP_landed(o);
+        }
     }
 
     //#region Ship Management
@@ -2003,6 +2055,8 @@ class Main extends Program {
         } else if(equals(input, "4")){
             //STORAGE UPGRADE
             GMP_shipStorageUpgrade();
+        } else if(isCommand(input)){
+            GMP_manageShip();
         }
         GMP_system();
     }
@@ -2028,6 +2082,8 @@ class Main extends Program {
                     GMP_insufficientFE(feAmount);
                 }
             }
+        } else if(isCommand(input)){
+            GMP_shipRepair();
         }
     }
 
@@ -2049,6 +2105,8 @@ class Main extends Program {
                     GMP_insufficientFE(feAmount);
                 }
             }
+        } else if(isCommand(input)){
+            GMP_shipReinforce();
         }
     }
 
@@ -2070,6 +2128,8 @@ class Main extends Program {
                     GMP_insufficientFE(feAmount);
                 }
             }
+        } else if(isCommand(input)){
+            GMP_shipTelescopeUpgrade();
         }
     }
 
@@ -2091,12 +2151,19 @@ class Main extends Program {
                     GMP_insufficientFE(feAmount);
                 }
             }
+        } else if(isCommand(input)){
+            GMP_shipStorageUpgrade();
         }
     }
     //#endregion
 
     void GMP_displayHUD(){
+        if(isAdmin){
+            GMP_adminConsole(input.split(" "));
+        }
         println(HUD_DisplayCardCluster(new Card[][]{{win_topLeft, win_topRight},{win_botLeft, win_botRight}}));
+        println(logCache);
+        logCache = "";
     }
 
     //#endregion
@@ -2104,7 +2171,7 @@ class Main extends Program {
     //#region Game global variables
     boolean isAdmin;
 
-    String input;
+    String input = "";
 
     Player player;
     Player player2;

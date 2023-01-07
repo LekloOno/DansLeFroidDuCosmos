@@ -1,5 +1,5 @@
 
-Brown dwarf
+Brown dwarf - VLA brown dwarf
 
 The least massive known star in the universe is called a "brown dwarf." Brown dwarfs are objects that are too small to sustain hydrogen fusion in their cores,
 which is the process that powers stars. As a result, they are not able to produce enough energy to shine as brightly as a star.
@@ -7,3 +7,15 @@ The least massive known brown dwarf has a mass of about 0.08 times the mass of t
 which is the largest planet in the Solar System. Brown dwarfs can be much smaller than this, with masses as low as about 13 times the mass of Jupiter, but these objects
 are difficult to detect and are not well-studied.
 It is possible that there may be even smaller objects in the universe that are too small to be classified as brown dwarfs, but these objects have not yet been detected.
+
+
+
+Largest star - R136a1
+
+The most massive known star in the universe is called R136a1. It is located in the Tarantula Nebula, a region of active star formation in the Large Magellanic Cloud,
+a satellite galaxy of the Milky Way.
+R136a1 has a mass of about 265 times the mass of the Sun and is about 2 million times brighter than the Sun.
+It is one of the most luminous and hottest known stars, with a surface temperature of about 53,000 degrees Celsius (95,000 degrees Fahrenheit).
+The extreme mass and luminosity of R136a1 make it a rare and short-lived object.
+Stars with masses much greater than the Sun are thought to end their lives in a spectacular supernova explosion after only a few million years,
+while the Sun is expected to live for about 10 billion years.
