@@ -3,6 +3,7 @@ import java.nio.channels.IllegalChannelGroupException;
 
 import javax.naming.ldap.InitialLdapContext;
 
+import extensions.CSVFile;
 import extensions.File;
 
 class Main extends Program {
@@ -13,6 +14,24 @@ class Main extends Program {
 
     //#region GLOBAL
         //Global - core operators and tools
+        String hoursToString(int time){
+            String s = "";
+            int initTime = time;
+            if(time > 8760){
+                s += time/8760 + " années, ";
+                time %= 8760;
+            }
+            if(time > 24){
+                s += time/24 + " jours, ";
+                time %= 24;
+            }
+            if(time > 0 || initTime == 0){
+                s += time + " heures, ";
+            }
+            s = substring(s, 0, length(s)-2) + ".";
+            return s; 
+        }
+
         boolean confirm(String input){
             return equals(input, "1") || equals(input, "");
         }
@@ -123,6 +142,10 @@ class Main extends Program {
         double randomInRange(double a, double r){
             //Returns a value randomly modified within a given r range
             return lerp(a-r, a+r, random());
+        }
+
+        int intDivToCeil(int a, int b){
+            return (int)Math.ceil(a*1.0/b*1.0);
         }
         /* Math module explanations
         Some of the math module's functions are used in the program.
@@ -413,12 +436,21 @@ class Main extends Program {
         return p;
     }
 
+    void PLAYER_consumeHydrogen(Player p, int amount){
+        p.ownedResources[1] -= amount;
+        if(p.ownedResources[1] <= 0){
+            GMP_endGame(1);
+        }
+    }
+
     boolean PLAYER_move(Player p, Vector2 b){
-        int cost = SHIP_hydrogenRequired(VECTOR2_distance(p.pos, b));
+        double distance = VECTOR2_distance(p.pos, b);
+        int cost = SHIP_hydrogenRequired(distance);
 
         boolean canMove = cost <= p.ownedResources[1];
         if(canMove){
-            p.ownedResources[1] -= cost;
+            PLAYER_consumeHydrogen(p, cost);
+            GMP_spendTime((int)Math.ceil(distance/p.ship.Speed));
             p.pos = b;
             sys_current[b.y][b.x].visited = true;
         }
@@ -429,7 +461,7 @@ class Main extends Program {
     boolean PLAYER_approach(Player p){
         boolean canApproach = p.ownedResources[1] >= APPROACH_COST;
         if(canApproach){
-            p.ownedResources[1] -= APPROACH_COST;
+            PLAYER_consumeHydrogen(p, APPROACH_COST);
             p.nearbySOstatus[0] = true;
             sys_current[p.pos.y][p.pos.x].approached = true;
         }
@@ -441,7 +473,7 @@ class Main extends Program {
 
         boolean canLand = cost <= p.ownedResources[1];
         if(canLand){
-            p.ownedResources[1] -= cost;
+            PLAYER_consumeHydrogen(p, cost);
             p.nearbySOstatus[0] = false;
             p.nearbySOstatus[1] = true;
         }
@@ -453,7 +485,11 @@ class Main extends Program {
 
         boolean canExtract = cost <= p.ownedResources[1];
         if(canExtract){
-            p.ownedResources[1] -= cost;
+            GMP_spendTime(intDivToCeil(cost+1, 4));
+            PLAYER_consumeHydrogen(p, cost);
+            if(o.type.type == ObjectLabel.Star){
+                SHIP_InflictDamage(p.ship, cost*2 + 1);
+            }
             p.ownedResources[resIdx] += res;
             o.availableResources[resIdx] -= res;
         }
@@ -461,11 +497,23 @@ class Main extends Program {
         return canExtract;
     }
 
+    boolean PLAYER_consumeOxygen(Player p, int cost){
+        boolean hasEnough = cost < p.ownedResources[2];
+
+        if(hasEnough){
+            p.ownedResources[2] -= cost;
+        }
+
+        return hasEnough;
+    }
+
     boolean PLAYER_repair(Player p, int Fe){
         boolean canRepair = Fe <= p.ownedResources[0];
         if(canRepair){
+            int repairAmount = SHIP_hpsForIron(Fe);
+            GMP_spendTime(intDivToCeil(repairAmount, 10));
             p.ownedResources[0] -= Fe;
-            p.ship.HPs += SHIP_hpsForIron(Fe);
+            p.ship.HPs += repairAmount;
         }
 
         return canRepair;
@@ -474,9 +522,11 @@ class Main extends Program {
     boolean PLAYER_reinforce(Player p, int Fe){
         boolean canReinforce = Fe <= p.ownedResources[0];
         if(canReinforce){
+            int reinforceAmount = SHIP_hpsForIron(Fe/4);
+            GMP_spendTime(intDivToCeil(reinforceAmount, 2));
             p.ownedResources[0] -= Fe;
-            p.ship.MaxHPs += SHIP_hpsForIron(Fe/4);
-            p.ship.HPs += SHIP_hpsForIron(Fe/4);
+            p.ship.MaxHPs += reinforceAmount;
+            p.ship.HPs += reinforceAmount;
         }
 
         return canReinforce;
@@ -485,6 +535,7 @@ class Main extends Program {
     boolean PLAYER_upgradeTelescope(Player p, int Fe){
         boolean canUpgrade = Fe <= p.ownedResources[0];
         if(canUpgrade){
+            GMP_spendTime(Fe/SHIP_SIGHTTOIRON);
             p.ownedResources[0] -= Fe;
             p.ship.SightRange += Fe/SHIP_SIGHTTOIRON;
         }
@@ -495,6 +546,7 @@ class Main extends Program {
     boolean PLAYER_upgradeStorage(Player p, int Fe){
         boolean canUpgrade = Fe <= p.ownedResources[0];
         if(canUpgrade){
+            GMP_spendTime(intDivToCeil(Fe/SHIP_STORAGETOIRON, 5));
             p.ownedResources[0] -= Fe;
             p.ship.Storage += Fe/SHIP_STORAGETOIRON;
         }
@@ -556,7 +608,7 @@ class Main extends Program {
                     line += system[y+sysFirstY][x+sysFirstX].type.type.sprite;
                 }
                 else {
-                    line += "#";
+                    line += "?";
                 }
                 line += " ";
             }
@@ -686,8 +738,8 @@ class Main extends Program {
         22,                     //Based on Kepler-138d
         27.2,                   //Based on Jupiter
         0.3,
-        newResources(0, 20, 0),
-        newResources(0, 50, 0)
+        newResources(0, 25, 0),
+        newResources(0, 60, 0)
     );
     //#endregion
     //#region Ice Giant
@@ -695,8 +747,8 @@ class Main extends Program {
         15,
         26,
         0.35,
-        newResources(1, 12, 6),
-        newResources(5, 36, 18)
+        newResources(1, 16, 8),
+        newResources(5, 40, 20)
     );
         //hydrogen is just the double of oxygen
     //#endregion
@@ -732,8 +784,8 @@ class Main extends Program {
         29,
         32,
         1.5,
-        newResources(10, 25, 0),
-        newResources(40, 100, 0)
+        newResources(20, 40, 0),
+        newResources(60, 120, 0)
     );
     //#endregion
 
@@ -872,7 +924,6 @@ class Main extends Program {
     void SO_interaction(SysObject o, Player p){
         int input = 0;
         while(input != 0){
-            //println(HUD_SO_displayInfosCard(o, p) + "\n" + SO_displayAction(o, p));
             input = readInt();
             SO_mainMenu(o, p, input);
         }
@@ -1000,26 +1051,28 @@ class Main extends Program {
     final int SHIP_DEF_INITSTOR = 80;
     final double SHIP_DEF_INITSIGHT = 9.5;
     final double SHIP_DEF_INITEFF = 1;
+    final double SHIP_DEF_INITSPEED = 0.5;
 
     Ship initShip(){
-        return newShip(SHIP_DEF_INITHPS, SHIP_DEF_INITSIGHT, SHIP_DEF_INITSTOR, SHIP_DEF_INITEFF);
+        return newShip(SHIP_DEF_INITHPS, SHIP_DEF_INITSIGHT, SHIP_DEF_INITSTOR, SHIP_DEF_INITEFF, SHIP_DEF_INITSPEED);
     }
 
     Ship newShip(){
-        return newShip(0, 0, 0, 0);
+        return newShip(0, 0, 0, 0, 0);
     }
 
-    Ship newShip(int _maxHps, double _sightRange, int _storage, double _efficiency){
-        return newShip(_maxHps, _maxHps, _storage, _sightRange, _efficiency);
+    Ship newShip(int _maxHps, double _sightRange, int _storage, double _efficiency, double _speed){
+        return newShip(_maxHps, _maxHps, _storage, _sightRange, _efficiency, _speed);
     }
 
-    Ship newShip(int _maxHps, int _currentHps, int _storage, double _sightRange, double _efficiency){
+    Ship newShip(int _maxHps, int _currentHps, int _storage, double _sightRange, double _efficiency, double _speed){
         Ship s = new Ship();
         s.MaxHPs = _maxHps;
         s.HPs = _currentHps;
         s.Storage = _storage;
         s.SightRange = _sightRange;
         s.Efficiency = _efficiency;
+        s.Speed = _speed;
         return s;
     }
 
@@ -1164,18 +1217,28 @@ class Main extends Program {
             //MUST be used on a normalized cluster
             String s = "";
             Card[][] normalized = HUD_NormalizeCardCluster(cards);
-            String separator;
+            int xlen = 0;
+            for(int x = 0; x<length(normalized, 2); x++){
+                xlen += cards[0][x].dimension.x;
+            }
+            xlen += length(cards, 2)*2+1;
+            String topBorder = new String(new char[xlen + 2]).replace("\0", "#") + "\n";
+            s += topBorder;
+
+            String separator = "#" + new String(new char[xlen]).replace("\0", HORIZ_SEPARATOR) + "#";
+            String empty = "#" + new String(new char[xlen]).replace("\0", " ") + "#";
 
             for(int y = 0; y < length(normalized); y ++){
+                /*
                 int sepLen = 0;
                 for(int x = 0; x<length(normalized[y]); x++){
                     sepLen += cards[y][x].dimension.x;
-                }
+                }*/
                 s += HUD_DisplayCardLine(normalized[y]);
-                separator = new String(new char[sepLen]).replace("\0", HORIZ_SEPARATOR);
-                s += "\n" + separator + "\n\n";
+                s += empty+"\n" + separator + "\n"+empty+"\n";
             }
-
+             
+            s += topBorder;
             return s;
         }
 
@@ -1187,11 +1250,11 @@ class Main extends Program {
             */
             String s = "";
             for(int y = 0; y<length(cards[0].lines); y++){
-                String line = "";    
+                String line = "# ";
                 for(int x = 0; x<length(cards); x++){
                     line += cards[x].lines[y] + VERT_SEPARATOR;
                 }
-                s += substring(line, 0, length(line)-length(VERT_SEPARATOR)) + "\n";
+                s += substring(line, 0, length(line)-length(VERT_SEPARATOR)) + " #\n";
             }
 
             return s;
@@ -1356,7 +1419,7 @@ class Main extends Program {
                 "Nouvelle Observation",
                 orbite,
                 "Gestion du vaisseau",
-                "Quitter le système (pas encore implémenté)"
+                "Guide"
             };
             return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
         }
@@ -1689,6 +1752,11 @@ class Main extends Program {
         Card HUD_Status(int[] preview){
             return HUD_Status(preview, 0, 0);
         }
+
+        Card HUD_timePreview(int time){
+            String line = "Estimation du temps requis : " + hoursToString(time);
+            return newCard(new String[]{line}, newVector2(length(line), 1));
+        }
     
         String[] HUD_numberList(String [] list){
             for(int i = 0; i<length(list); i++){
@@ -1703,7 +1771,7 @@ class Main extends Program {
     //#region GMP   | RUNTIME GAMEPLAY
     void GMP_InflictDamage(int damage){
         if(!SHIP_InflictDamage(player.ship, damage)){
-            //GMP_ShipDestroyed();
+            GMP_endGame(2);
         }
     }
     void GMP_insufficientFE(int amount){
@@ -1713,6 +1781,7 @@ class Main extends Program {
     }
 
     void GMP_system(){
+        win_timePreview = newCard();
         win_topLeft = SYS_playerVisionToCard(sys_current, player);
         win_topRight = HUD_SO_displayInfosCard(sys_current[player.pos.y][player.pos.x], player);
         win_botLeft = HUD_SYS_mainMenu(sys_current[player.pos.y][player.pos.x]);
@@ -1729,9 +1798,9 @@ class Main extends Program {
             GMP_approach();
         } else if(equals(input, "4")){
             GMP_manageShip();
-        } /*else if(isAdmin){
-            GMP_adminConsole(input.split(" "));
-        }*/
+        } else if(equals(input, "5")){
+            GMP_displayGuide();
+        }
         GMP_system();
     }
 
@@ -1887,6 +1956,8 @@ class Main extends Program {
                         logCache = ""+player.nearbySOstatus[0];
                     } else if(equals(cmd_param, CMDP_LANDED)){
                         logCache = ""+player.nearbySOstatus[1];
+                    } else if(equals(cmd_param, "time")){
+                        logCache = ""+game_time;
                     } else {
                         logCache = "Unknown parameter";
                     }
@@ -1897,7 +1968,7 @@ class Main extends Program {
                             player.ownedResources[0] = cmd_value;
                             logCache = "Iron" + logCache;
                         } else if(equals(cmd_param, CMDP_HYDROGEN)){
-                            player.ownedResources[1] = cmd_value;
+                            PLAYER_consumeHydrogen(player,player.ownedResources[1]-cmd_value);
                             logCache = "Hydrogen" + logCache;
                         } else if(equals(cmd_param, CMDP_OXYGEN)){
                             player.ownedResources[2] = cmd_value;
@@ -1923,6 +1994,9 @@ class Main extends Program {
                         } else if(equals(cmd_param, "xpos")){
                             player.pos.x += cmd_value;
                             logCache = "Xpos" + logCache;
+                        } else if(equals(cmd_param, "time")){
+                            GMP_spendTime(cmd_value-game_time);
+                            logCache = "Time" + logCache;
                         } else {
                             logCache = "";
                         }
@@ -2014,7 +2088,9 @@ class Main extends Program {
 
         if(INPUT_isValidCoord(input, sys_current)){
             Vector2 inputCoord = INPUT_inputToVector2(input);
-            int cost = SHIP_hydrogenRequired(VECTOR2_distance(player.pos, inputCoord));
+            double distance = VECTOR2_distance(player.pos, inputCoord);
+            int cost = SHIP_hydrogenRequired(distance);
+            win_timePreview = HUD_timePreview((int)Math.ceil(distance/player.ship.Speed));
             win_botLeft = HUD_confirmMoveMenu(inputCoord);
             win_botRight = HUD_Status(new int[]{0, -cost, 0});
 
@@ -2137,8 +2213,6 @@ class Main extends Program {
 
     int SO_HcostForResource(SysObject o, int resIdx, int res){
         //The more the player extracts resources, the more expansive it gets. + an object with more base resources allows for easier extraction.
-        println(o.baseResources[resIdx]);
-        println(res);
         return (int)(Math.pow(((o.baseResources[resIdx]-o.availableResources[resIdx]+res)*1.0)/o.baseResources[resIdx]*1.0,2)*Math.pow(o.baseResources[resIdx], 0.5)*5);
     }
 
@@ -2155,7 +2229,8 @@ class Main extends Program {
             
             int[] previewRes = {0, -extractCost, 0};
             previewRes[resIdx] += extractAmount;
-            win_botRight = HUD_Status(previewRes);
+            win_timePreview = HUD_timePreview(intDivToCeil(extractCost, 4));
+            win_botRight = HUD_Status(previewRes, -extractCost*2 - 1, 0);
             win_botLeft = HUD_SOextractConfirmMenu(extractAmount, extractCost);
 
             GMP_displayHUD();
@@ -2168,6 +2243,7 @@ class Main extends Program {
                     waitSeconds(TEMPWINDOW);
                     GMP_extract(o, resIdx);
                 }
+                win_topRight = HUD_SO_displayInfosCard(o, player);
             }
         } else if(isCommand(input)){
             GMP_extract(o, resIdx);
@@ -2213,11 +2289,12 @@ class Main extends Program {
 
         input = readString();
         int feAmount = INPUT_repairInputToFe(input);
-        println(feAmount);
-        int repairPerc = ((SHIP_hpsForIron(feAmount) + player.ship.HPs)*100)/player.ship.MaxHPs;
+        int repairAmount = SHIP_hpsForIron(feAmount);
+        int repairPerc = ((repairAmount + player.ship.HPs)*100)/player.ship.MaxHPs;
         if(feAmount>0){
+            win_timePreview = HUD_timePreview(intDivToCeil(repairAmount, 10));
             win_botLeft = HUD_shipRepairConfirmMenu(feAmount, repairPerc);
-            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0}, SHIP_hpsForIron(feAmount), 0);
+            win_botRight = HUD_Status(new int[]{-feAmount, 0, 0}, repairAmount, 0);
 
             GMP_displayHUD();
 
@@ -2240,6 +2317,7 @@ class Main extends Program {
         input = readString();
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input);
+            win_timePreview = HUD_timePreview(intDivToCeil(SHIP_hpsForIron(feAmount/4), 2));
             win_botLeft = HUD_shipReinforceConfirmMenu();
             win_botRight = HUD_Status(new int[]{-feAmount, 0, 0});
             GMP_displayHUD();
@@ -2263,6 +2341,7 @@ class Main extends Program {
         input = readString();
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input)*SHIP_SIGHTTOIRON;
+            win_timePreview = HUD_timePreview(Integer.parseInt(input));
             win_botLeft = HUD_shipTelescopeUpgradeConfirmMenu();
             win_botRight = HUD_Status(new int[]{-feAmount, 0, 0});
             GMP_displayHUD();
@@ -2286,6 +2365,7 @@ class Main extends Program {
         input = readString();
         if(isNumeric(input)){
             int feAmount = Integer.parseInt(input)*SHIP_STORAGETOIRON;
+            win_timePreview = HUD_timePreview(intDivToCeil(Integer.parseInt(input), 5));
             win_botLeft = HUD_shipStorageUpgradeConfirmMenu();
             win_botRight = HUD_Status(new int[]{-feAmount, 0, 0}, 0, Integer.parseInt(input));
             GMP_displayHUD();
@@ -2304,10 +2384,13 @@ class Main extends Program {
     //#endregion
 
     void GMP_displayHUD(){
+        clearScreen();
         if(isAdmin){
             GMP_adminConsole(input.split(" "));
         }
-        println(HUD_DisplayCardCluster(new Card[][]{{win_topLeft, win_topRight},{win_botLeft, win_botRight}}));
+        String line = "Temps écoulé : " + hoursToString(game_time);
+        win_gameTime = newCard(new String[]{line}, newVector2(length(line), 1));
+        println(HUD_DisplayCardCluster(new Card[][]{{win_gameTime, win_timePreview},{win_topLeft, win_topRight},{win_botLeft, win_botRight}}));
         println(logCache);
         logCache = "";
     }
@@ -2322,26 +2405,133 @@ class Main extends Program {
             println(readLine(f));
         }
         readString();
-        f = newFile("../ressources/howToPlay.txt");
+        GMP_displayGuide();
+        
+        GMP_initGame(newPlayer, equals(newName, "admin"), SYS_generateSystem(), 0);
+    }
+
+    void GMP_displayGuide(){
+        File f = newFile("../ressources/howToPlay.txt");
         while(ready(f)){
             println(readLine(f));
         }
         readString();
-        GMP_initGame(newPlayer, equals(newName, "admin"), SYS_generateSystem());
     }
 
-    void GMP_initGame(Player p, boolean adminSession, SysObject[][] system){
+    void GMP_initGame(Player p, boolean adminSession, SysObject[][] system, int time){
         player = p;
         isAdmin = adminSession;
-        sys_current = system; 
+        sys_current = system;
         sys_current[p.pos.y][p.pos.x].visited = true;
+        game_time = time;
         GMP_system();
+    }
+
+    void GMP_spendTime(int time){
+        int realTime = Math.min(time, player.ownedResources[2]*12-game_lastOxTime);
+        game_time += realTime;
+        game_lastOxTime += realTime;
+        if(game_lastOxTime > 12){
+            if(!PLAYER_consumeOxygen(player, game_lastOxTime/12)){
+                GMP_endGame(0);
+            };
+            game_lastOxTime %= 12;
+        }
+    }
+
+    void GMP_mainMenu(){
+        File f = newFile("../ressources/bootMenu.txt");
+        while(ready(f)){
+            println(readLine(f));
+        }
+        input = readString();
+        print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        if(equals(input, "2")){
+        } else if(equals(input, "3")){
+            GMP_displayScore();
+        } else {
+            GMP_newGame();
+        }
+    }
+
+    void GMP_endGame(int type){
+        String fileSource = "";
+        if(type == 0){
+            fileSource = "../ressources/ends/oxygenEnd.txt";
+        } else if(type == 1){
+            if(isIn(new ObjectLabel[]{ObjectLabel.Icegiant, ObjectLabel.Telluric}, sys_current[player.pos.x][player.pos.y].type.type)){
+                fileSource = "../ressources/ends/stuckInSpaceLandedEnd.txt";
+            } else {
+                fileSource = "../ressources/ends/stuckInSpaceEnd.txt";
+            }
+        } else if(type == 2){
+            fileSource = "../ressources/ends/shipDestroyedEnd.txt";
+        }
+
+        File f = newFile(fileSource);
+
+        while(ready(f)){
+            println(readLine(f));
+        }
+        String reCenter = new String(new char[60]).replace("\0", " ");
+        println(breakLine + "\n" + reCenter + " - Vous avez survécu " + hoursToString(game_time));
+        println(reCenter + " Voulez-vous enregistrer votre score ?");
+        println(reCenter + "0. Oui         1. Non");
+        print(breakLine+"\n"+reCenter+"#>");
+        if(equals(readString(),"1")){
+            GMP_mainMenu(); 
+        } else {
+            addScore(new String[]{player.name, game_time+""});
+            GMP_displayScore();
+        }
+    }
+
+    void addScore(String[] score){
+        CSVFile csv_scores = loadCSV(scoreRef);
+        String[][] s_scores = new String[rowCount(csv_scores) + 1][2];
+        int y = 0;
+        int added = 0;
+        while(y < length(s_scores)){
+            if(added == 1 || (y<rowCount(csv_scores) && Integer.parseInt(getCell(csv_scores, y, 1))>Integer.parseInt(score[1]))){
+                s_scores[y] = new String[]{getCell(csv_scores, y-added, 0), getCell(csv_scores, y-added, 1)};
+            } else {
+                s_scores[y] = score;
+                added ++;
+            }
+            y ++;
+        }
+
+        saveCSV(s_scores, scoreRef);
+    }
+
+    void GMP_displayScore(){
+        CSVFile csv_scores = loadCSV(scoreRef);
+        String margin = new String(new char[15]).replace("\0", " ");
+
+        println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        println(margin + "Joueur" + new String(new char[24]).replace("\0", " ") + "|  A survécu");
+        println(margin + new String(new char[61]).replace("\0", "_"));
+        
+        for(int y = 0; y<rowCount(csv_scores); y++){
+            String p_name = getCell(csv_scores, y, 0);
+            String p_score = hoursToString(Integer.parseInt(getCell(csv_scores, y, 1)));
+
+            println(margin + "(" + (y+1) + ") - " + p_name + new String(new char[30-length(p_name)-5-(y+11)/10]).replace("\0", " ") + "| " + p_score);
+        }
+
+        readString();
+        GMP_mainMenu();
     }
 
     //#endregion
 
     //#region Game global variables
+    String scoreRef = "../ressources/scores.csv";
+    String breakLine = new String(new char[200]).replace("\0", "_");
     boolean isAdmin;
+
+    int game_time;
+    int game_lastOxTime;
 
     String input = "";
 
@@ -2349,6 +2539,8 @@ class Main extends Program {
     Player player2;
     Player player3;
 
+    Card win_gameTime;
+    Card win_timePreview;
     Card win_topLeft;
     Card win_topRight;
     Card win_botLeft;
@@ -2359,48 +2551,8 @@ class Main extends Program {
     SysObject[][] sys_current;
     //#endregion
 
-    //#region Static
-    String openingMenu =
-    "  .   .              .   .                          .              .   .              .   .   .          .   .   .   .          .   .              .   .   .              .   .                  .   .  \n                                                                                                                                                                                                        \n                                                                                                                                                                                                        \n                                                                 .                      .       .          .   .   .              .                      .                  .   .                  .    \n                                                                                        .                                                                                                               \n               "
-    + "                                                    @@@@     @@@    @@   @   @@@@@       @      @@@@@@       @@@@@  @@@@@    @@@@@    @  @@@@                                            \n                             .                                 .   @   @   @   @   @ @  @  @  .         @      @   .   .   @@      @    @  @@    @  @@  @   @           .       .              .        \n  .   .                      .                                 .   @   @   @@@@@   @  @ @. @@@@@@       @      @@@@        @    .  @    @  @ @@@ @  @.  @ . @  .              .                         \n                                                                   @   @  @     @  @   @@       @       @@     @@          @@@@@   @@@@@   @    @@  @   @   @                                           \n                                                                   @@@@   @     @  @    @. @@@@@         @@@@   @@@@@@     @       @    @   @@@@@   @   @@@@                                            \n    .   .              .   .  "
-    + "            .   .   .          .   .   .   .              .                                      .   .   .      .   .   .   .              .   .          .      .   .   .\n                                                                                                                                                                                                        \n                                                                           @@@@   @    @        @@@@@    @@@@@    @@@@@  @@@@@@@    @@@@@    @@@@@                                                      \n  .   .   .          .   .   .          .    .   .          .   .   .     @   @  @.   @ .   .  @ .     @     @  @ .   . @     @@  @     @. @   .   .          .   .   .   .          .   .   .          \n                                                                         @   @  @    @        @       @     @  @@@@@@  @      @  @     @  @@@@@@                                                        \n                                             "
-    + "                             @   @  @    @        @@      @     @       @  @      @  @     @       @                                                       \n.   .   .              .   .           .   .   .   .          .   .   .   @@@@   @@@@@   .   .  @@@@@ . @@@@@   @@@@@.  @      @   @@@@@.  @@@@@  .   .          .   .   .   .      .   .   .   .       \n                                                                                                                                                                                                        \n                                                                                                                                                                                                        \n      .                  .              .   .   .   .          .       .              .   .   .                  .                  .   .              .   .              .   .              .   .      \n  .                      ..              .   .   .          "
-    + "                                                 .   .              .   .              .       .              .   .                         \n                                                                                                                                                                                                        \n    .   .          .   .   .   .      .   .   .   .   .          .   .                  .   .   .          .   .   .          .       .              .   .   .          .   .   .              .   .    \n                                                                                                                                                                                                        \n                                                                                         *#%%%#%%&&&&&&&&&&&&&&&&&%%%#%#*                                                                               \n  .   .   .              .   .   .          .   .   .      .       .   .   "
-    + ".  (#%%%&&&#&&@#&&&#&&&%&&%&&&#@&&#&&&&&&&#&&&&&&#&&&#@&@#&  .   .      .   .   .   .      .   .   .   .   .      .   .   .  \n                                                                       %%%%%&&&&&&&&&&%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&%*                                                          \n                                                                  %&&&&&&&&&&&@&%%%%%%%%%%%%%%%%@&&&%#&&&&&&&&&@&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&#,                                                    \n    .   .              .   .   .              .   .   .      .   .   .   .      .      *#%%&%&&&&&&&&&&%&&&%&&&#&&&%&&&&&&&&&&%&&&%&&&#&&&%&&%#(//%%&#%&%    .                  .              .   .    \n                                                                                              /&%%%%%%%%%%%#%%%%%%%%%%%%%%#%%%%%%%#%%%#%%%%%%#%&&&&&#, (% @&&#%&%#                                      \n                                                                                          "
-    + "                                                      .(%%%%%&&% %*&&&&&&&#                                    \n  .       .          .   .   .   .      .       .   .   .          .   .              .       . (,           .                      .                  . &% %&&%&&&%%&%           .          .          \n                                                .                      .                                                        .                          #.%&&&&&% &#  #%                             \n                                                                                                                                                            %%&&&&&% @%   %                             \n        .                  .                      .                  .                 **(( *(((((((/((/(( /(((,(((.                                      *  #&&&&&% &&&%#&                             \n    .   .              .   .   .          .   .   .   .      .   .   .   .       ,((,(((.(,(.(((*((//(/*"
-    + "(((.(  .   .     #*/(((.  .   .                  . *  %&&%&% %&&&   .   .              .   .    \n                                                                                          .(/((((((((((((((      /(((((((((((((((((                         , (&&&&,.&                                  \n                                                                       /(((/(((/((/(((*(((,(((*((&(((/(,((((/(( (((.    .(((((((*((                        * * &&&& (&                                  \n      .              .   .   .          .   .   .   .   .      .   .    ((.           .(/(. ((.((/#/%/%/%,(((.   .   .           (((,   .          .   .  * *, %&&& &&    .   .              .   .   .  \n                                       **                                        @%    #  ( (/  (/(%,%%*%%(((   (     / /&%     ((((((                      ,. %&&# &&                                  \n                                      , .         .                (        (( /,,(*/&&# ((((( //(%,%%%%%%(%(*   %/ ,. "
-    + "#&(( /(((((/(((/                    ., ,%&&  &%                                  \n    .   .   .              .   .      *   .   .,,     .      .   .(((,   .    (%(%%//%%%/#%(.((*,(/##%%(%%%(%(,.(((,((/,((//((,((( (((.   .          .   . ,* *%&%  %&&*.   .   .   .      .   .   .   .\n                                     ***     ,,,.,,               (((/(((/(((/(((#%%#%%,(%%%/(((/#%%%%%#,%##%%%#((%#%%%#%%%%%%#%%%%(/(/,                   ,, *&&&&&%%%                                 \n                                      ,,   ,,,,,,                 ((((((%%%%%#.%%%%%%%%%%%%/(%(((%%%%%%%%%%%%%%%%%%(%%%%%%%%%%%%%%%%((((                   ,* *&#%&&                                    \n  .                      .   .       ,,,   ,.  ,.              .  (*((%(%%%#%%%%%/#%%%(%%%/%((//(%#%%##%%#%%%/%%%(%%%(%%,%%%#/%%(%%%/((  .      ,  .   .   ,  *%% %%          .                  .   .  \n                                 .   ,,,   ,. ,                   (*((,(%%%#%%##%%#%%%#%%%/(((/(%##%%#%%%#%%/(%%%(%%%#%%#%#%#%%%#%%/* "
-    + "((  , .               /* ,% %                               .      \n                                     ,*,  .,,,                    #(((((%%%%%%%%%%%%%%%%( (((((%%%%%%%%%%%%%##((%%%%%%%%%%%%%%%%%%((((/  , ,      ,        (.                                           \n                           .         ,,*  .,,,         ,  ,      . /(/(/%(%%##%%#%%%(%%(/(((/(((#%%##%%#%%%(%%(,(%%(%%##%%#%%%#%#*#%((    .,             , *,                   .              .        \n                       .             ,/,* .,,,.        ,         .  (*((%(%%%#%%##%%(%%%/(((/(( (((##%#((((/%((/%%%(%%%#%%%,%%%%%%((((    .,         .   ,,*,,              .   .                       \n                                     *( /  ,,,        ,, ,           ((((((%%%%%%%%%%%%#%(        (((( ,(((((/%%%%%%%%%%%%%%%%%%%%(((     ,,            ,., *,                                          \n                                      (*, . .,        ,,              (/((##%%%#%%#%%%#%%%#((((((,  ((#%%%%%%#%%%(%%%#%%#%%%#%%%#%((/   . ,.        "
-    + "    , (                                             \n      .              .   .   .   .   ,,( / , ,  .   . ,  ,     .   .   *(((*%%##%%#%%%(%%%(%%%##(%#%///%%#%%%(%%%#%%%(%%##%##%%%,(((.  ,..,        .    ,./.*                 .   .          .   .   .  \n                                       (*,* ,,        ,  ,              ((((((%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#%%%#%%%%%%%%%%#%%%(((  ,,, ,,            ,,/,,                                            \n                               .       *(, * ,          ,,               /(((((((%%%#%%%#%%%/(((((%%%(((((.((#%#%%%#%%##%%#%%%#%((  ,,, ,,.           *,, ,                                             \n    .   .   .          .              . ,(,,* .   .     ..       .   .   . (//((//(/*(((/   .              .   . ((((%%#%%##%%((( . ,,,.             .,,,,,,            .   .   .              .   .    \n                                         ,(( (           ,,,                 (((((((((/   *(/(/(       #/%%%#(%(#%%%%%%%%%%%%/(    ,, ,,             .,((*.        "
-    + "                                     \n                                           ,/*,,          ,,,                  (((//((/*((/    (%(#%%(((((. (%%(#%%%%#%%%(%((     ,,. .,,          , ,(**                                               \n      .   .          .   .   .   .           (( .*. .   .  .. ,.   .   .   .      *(((,(# .   .   .      .   ,((((%%#(%%((( .   . ,,., ..         *,*(#.*  .   .      .   .   .   .          .   .   .  \n                                              ,(/*,(,.       ,,.,.                    /(((/(  ,(((/((((((/((%#%%%(%%%%%%(         ,, ,,,.        .,/(, ,                                                \n                                                 */(, ,(*       ,,.                    (((((/((#%%%%%(%%%%%%%%%%%%%/((         ,,,,,..,        ,,/(, *  *                                               \n.   .   .              .   .   .          .,  .      .,(/, ,*,/*,,,,,.   .          .   . ((.(%%*%%#%%%#%%%#%%%#%%(           ., ,.   .    .,,/((,,,   . .   .              .   . "
-    + "             .        \n                                             *,             *,,((/((/,,**,.,,,((/(((/((*,,,*.       .,**#((/(((*             ..      *,,,(/(((,,,    ,                                                  \n                                                ,                          .,*,*/(((((//*,,,*/((,,,,(((((((((((((/(((((((((((((((((((((((,,,,      (                                                    \n                         .   .              .      *,,* .          .   .   .          .   .      ,*/(/(((,(((,(/*,,,*,,,,,,,,,,,,,             */,     .                      .                         \n                         .                  .   .   .   ,,,,,,,,.                         .              ...,,,,,,..                      *,/(,            .                  .                         \n                                                                 **,,/(/,/(((((((((*,,,,,,**.                                     *   ,,/(*                                                      "
-    + "       \n                                                                                       .,*,,,*/(/((//(/*(((/(((/(((/((,*((/(((/*,,,,                                                                    \n    .                  .   .              .   .   .   .          .   .   .          .   .   .                      .              .   .                  .              .   .   .              .   .   .\n                                                                                                                                                                                                        \n                                                                                                                                                                                                        \n      .                  .   .              .   .   .              .   .              .   .   .              .   .              .   .   .              .   .              .   .                         \n      "
-    + "                                                                                                                                                                                                  \n                                                                                                                                                                                                        \n    .                  .   .   .          .   .   .   .      .   .   .   .          .   .   .              .   .   .          .   .   .              .   .   .   .      .   .   .              .   .   .\n                                                                                                                                                                                                        \n                                                                                          - Entrée pour continuer -                                                                                     \n                     "
-    + "                          .              .   .                  .   .                                                             .                                                \n                                                                                                                                    .                                                                   \n                                                                                                                                                                                                        \n";
-    ;
-    //#endregion
-
-    String test =
-    "  .   .              .   .                          .              .   .              .   .   .          .   .   .   .          .   .              .   .   .              .   .                  .   .  \n                                                                                                                                                                                                        \n                                                                                                                                                                                                        \n                                                                 .                      .       .          .   .   .              .                      .                  .   .                  .    \n                                                                                        .                                                                                                               \n                                                                   @@@@     @@@    @@   @   @@@@@       @      @@@@@@       @@@@@  @@@@@    @@@@@    @  @@@@                                            \n                             .                                 .   @   @   @   @   @ @  @  @  .         @      @   .   .   @@      @    @  @@    @  @@  @   @           .       .              .        \n  .   .                      .                                 .   @   @   @@@@@   @  @ @. @@@@@@       @      @@@@        @    .  @    @  @ @@@ @  @.  @ . @  .              .                         \n                                                                   @   @  @     @  @   @@       @       @@     @@          @@@@@   @@@@@   @    @@  @   @   @                                           \n                                                                   @@@@   @     @  @    @. @@@@@         @@@@   @@@@@@     @       @    @   @@@@@   @   @@@@                                            \n    .   .              .   .              .   .   .          .   .   .   .              .                                      .   .   .      .   .   .   .              .   .          .      .   .   .\n                                                                                                                                                                                                        \n                                                                           @@@@   @    @        @@@@@    @@@@@    @@@@@  @@@@@@@    @@@@@    @@@@@                                                      \n  .   .   .          .   .   .          .    .   .          .   .   .     @   @  @.   @ .   .  @ .     @     @  @ .   . @     @@  @     @. @   .   .          .   .   .   .          .   .   .          \n                                                                         @   @  @    @        @       @     @  @@@@@@  @      @  @     @  @@@@@@                                                        \n                                                                          @   @  @    @        @@      @     @       @  @      @  @     @       @                                                       \n.   .   .              .   .           .   .   .   .          .   .   .   @@@@   @@@@@   .   .  @@@@@ . @@@@@   @@@@@.  @      @   @@@@@.  @@@@@  .   .          .   .   .   .      .   .   .   .       \n                                                                                                                                                                                                        \n                                                                                                                                                                                                        \n                                                                                         *#%%%#%%&&&&&&&&&&&&&&&&&%%%#%#*                                                                               \n  .   .   .              .   .   .          .   .   .      .       .   .   .  (#%%%&&&#&&@#&&&#&&&%&&%&&&#@&&#&&&&&&&#&&&&&&#&&&#@&@#&  .   .      .   .   .   .      .   .   .   .   .      .   .   .  \n                                                                       %%%%%&&&&&&&&&&%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&%*                                                          \n                                                                  %&&&&&&&&&&&@&%%%%%%%%%%%%%%%%@&&&%#&&&&&&&&&@&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&#,                                                    \n    .   .              .   .   .              .   .   .      .   .   .   .      .      *#%%&%&&&&&&&&&&%&&&%&&&#&&&%&&&&&&&&&&%&&&%&&&#&&&%&&%#(//%%&#%&%    .                  .              .   .    \n                                                                                              /&%%%%%%%%%%%#%%%%%%%%%%%%%%#%%%%%%%#%%%#%%%%%%#%&&&&&#, (% @&&#%&%#                                      \n                                                                                                                                               .(%%%%%&&% %*&&&&&&&#                                    \n  .       .          .   .   .   .      .       .   .   .          .   .              .       . (,           .                      .                  . &% %&&%&&&%%&%           .          .          \n                                                .                      .                                                        .                          #.%&&&&&% &#  #%                             \n                                                                                                                                                            %%&&&&&% @%   %                             \n        .                  .                      .                  .                 **(( *(((((((/((/(( /(((,(((.                                      *  #&&&&&% &&&%#&                             \n    .   .              .   .   .          .   .   .   .      .   .   .   .       ,((,(((.(,(.(((*((//(/*(((.(  .   .     #*/(((.  .   .                  . *  %&&%&% %&&&   .   .              .   .    \n                                                                                          .(/((((((((((((((      /(((((((((((((((((                         , (&&&&,.&                                  \n                                                                       /(((/(((/((/(((*(((,(((*((&(((/(,((((/(( (((.    .(((((((*((                        * * &&&& (&                                  \n      .              .   .   .          .   .   .   .   .      .   .    ((.           .(/(. ((.((/#/%/%/%,(((.   .   .           (((,   .          .   .  * *, %&&& &&    .   .              .   .   .  \n                                       **                                        @%    #  ( (/  (/(%,%%*%%(((   (     / /&%     ((((((                      ,. %&&# &&                                  \n                                      , .         .                (        (( /,,(*/&&# ((((( //(%,%%%%%%(%(*   %/ ,. #&(( /(((((/(((/                    ., ,%&&  &%                                  \n    .   .   .              .   .      *   .   .,,     .      .   .(((,   .    (%(%%//%%%/#%(.((*,(/##%%(%%%(%(,.(((,((/,((//((,((( (((.   .          .   . ,* *%&%  %&&*.   .   .   .      .   .   .   .\n                                     ***     ,,,.,,               (((/(((/(((/(((#%%#%%,(%%%/(((/#%%%%%#,%##%%%#((%#%%%#%%%%%%#%%%%(/(/,                   ,, *&&&&&%%%                                 \n                                      ,,   ,,,,,,                 ((((((%%%%%#.%%%%%%%%%%%%/(%(((%%%%%%%%%%%%%%%%%%(%%%%%%%%%%%%%%%%((((                   ,* *&#%&&                                    \n  .                      .   .       ,,,   ,.  ,.              .  (*((%(%%%#%%%%%/#%%%(%%%/%((//(%#%%##%%#%%%/%%%(%%%(%%,%%%#/%%(%%%/((  .      ,  .   .   ,  *%% %%          .                  .   .  \n                                 .   ,,,   ,. ,                   (*((,(%%%#%%##%%#%%%#%%%/(((/(%##%%#%%%#%%/(%%%(%%%#%%#%#%#%%%#%%/*((  , .               /* ,% %                               .      \n                                     ,*,  .,,,                    #(((((%%%%%%%%%%%%%%%%( (((((%%%%%%%%%%%%%##((%%%%%%%%%%%%%%%%%%((((/  , ,      ,        (.                                           \n                           .         ,,*  .,,,         ,  ,      . /(/(/%(%%##%%#%%%(%%(/(((/(((#%%##%%#%%%(%%(,(%%(%%##%%#%%%#%#*#%((    .,             , *,                   .              .        \n                       .             ,/,* .,,,.        ,         .  (*((%(%%%#%%##%%(%%%/(((/(( (((##%#((((/%((/%%%(%%%#%%%,%%%%%%((((    .,         .   ,,*,,              .   .                       \n                                     *( /  ,,,        ,, ,           ((((((%%%%%%%%%%%%#%(        (((( ,(((((/%%%%%%%%%%%%%%%%%%%%(((     ,,            ,., *,                                          \n                                      (*, . .,        ,,              (/((##%%%#%%#%%%#%%%#((((((,  ((#%%%%%%#%%%(%%%#%%#%%%#%%%#%((/   . ,.            , (                                             \n      .              .   .   .   .   ,,( / , ,  .   . ,  ,     .   .   *(((*%%##%%#%%%(%%%(%%%##(%#%///%%#%%%(%%%#%%%(%%##%##%%%,(((.  ,..,        .    ,./.*                 .   .          .   .   .  \n                                       (*,* ,,        ,  ,              ((((((%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#%%%#%%%%%%%%%%#%%%(((  ,,, ,,            ,,/,,                                            \n                               .       *(, * ,          ,,               /(((((((%%%#%%%#%%%/(((((%%%(((((.((#%#%%%#%%##%%#%%%#%((  ,,, ,,.           *,, ,                                             \n    .   .   .          .              . ,(,,* .   .     ..       .   .   . (//((//(/*(((/   .              .   . ((((%%#%%##%%((( . ,,,.             .,,,,,,            .   .   .              .   .    \n                                         ,(( (           ,,,                 (((((((((/   *(/(/(       #/%%%#(%(#%%%%%%%%%%%%/(    ,, ,,             .,((*.                                             \n                                           ,/*,,          ,,,                  (((//((/*((/    (%(#%%(((((. (%%(#%%%%#%%%(%((     ,,. .,,          , ,(**                                               \n      .   .          .   .   .   .           (( .*. .   .  .. ,.   .   .   .      *(((,(# .   .   .      .   ,((((%%#(%%((( .   . ,,., ..         *,*(#.*  .   .      .   .   .   .          .   .   .  \n                                              ,(/*,(,.       ,,.,.                    /(((/(  ,(((/((((((/((%#%%%(%%%%%%(         ,, ,,,.        .,/(, ,                                                \n                                                 */(, ,(*       ,,.                    (((((/((#%%%%%(%%%%%%%%%%%%%/((         ,,,,,..,        ,,/(, *  *                                               \n.   .   .              .   .   .          .,  .      .,(/, ,*,/*,,,,,.   .          .   . ((.(%%*%%#%%%#%%%#%%%#%%(           ., ,.   .    .,,/((,,,   . .   .              .   .              .        \n                                             *,             *,,((/((/,,**,.,,,((/(((/((*,,,*.       .,**#((/(((*             ..      *,,,(/(((,,,    ,                                                  \n                                                ,                          .,*,*/(((((//*,,,*/((,,,,(((((((((((((/(((((((((((((((((((((((,,,,      (                                                    \n                         .   .              .      *,,* .          .   .   .          .   .      ,*/(/(((,(((,(/*,,,*,,,,,,,,,,,,,             */,     .                      .                         \n                         .                  .   .   .   ,,,,,,,,.                         .              ...,,,,,,..                      *,/(,            .                  .                         \n                                                                 **,,/(/,/(((((((((*,,,,,,**.                                     *   ,,/(*                                                             \n                                                                                       .,*,,,*/(/((//(/*(((/(((/(((/((,*((/(((/*,,,,                                                                    \n\n                                                                                          - Entrée pour continuer -                                                                                     \n                                               .              .   .                  .   .                                                             .                                                \n                                                                                                                                    .                                                                   \n                                                                                                                                                                                                        \n";
-    
     void algorithm() {
-        //println(test);
-        File f = newFile("../ressources/bootMenu.txt");
-        while(ready(f)){
-            println(readLine(f));
-        }
-        input = readString();
-        print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        if(equals(input, "1")){
-            /* 
-            println("Entrez votre nom de joueur : ");
-            player = initPlayer(readString(), newVector2(20, 16));
-            isAdmin = equals(player.name, "admin");
-            player.ship.HPs = 50;
-            sys_current = SYS_generateSystem();
-            GMP_system();*/
-            GMP_newGame();
-        }
+        GMP_mainMenu();
     }
 
 

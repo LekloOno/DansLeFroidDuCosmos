@@ -63,6 +63,11 @@ COMMANDS -
     sight   - ---------Sight Range                                                                  |   player.ship.SightRange
     store   - ---------ship Storage capacity                                                        |   player.ship.Storage
     land    - ---------Landed status                                                                |   player.nearbySOstatus[1]
+    
+
+    GAME SPECIFIC - (works as player specific commands)
+
+    time    - Game time (hours)                                                                     |   GMP_spendTime(value-game_time)
 
 
 

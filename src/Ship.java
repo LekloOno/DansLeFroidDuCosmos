@@ -4,5 +4,6 @@ class Ship {
     int Storage;        //Max resource units that can be stored.
     double SightRange;  //In system unit. Represents how far the player can identify objects in the system.
     double Efficiency;  //Non explicit value - the higher it is, the lower the cost to move.
+    double Speed;       //System unit per hour
     //To be implemented later - int ArmorLevel; //A way to completely nullify small enough damage. The value represents its threshold.
 }

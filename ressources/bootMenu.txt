@@ -61,7 +61,7 @@
     .                  .   .              .   .   .   .          .   .   .          .   .   .                      .              .   .                  .              .   .   .              .   .   .
                    .                 *                            .                                .                                    .                             .             *                   
                                                                                                                                                                                                         
-                                                                               - 1. Nouvelle Partie    2. Charger une partie -                                                                          
+                                                                      - 1. Nouvelle Partie    2. Charger une partie    3. Scores -                                                                      
                                                 .              .   .                  .   .                                                            .                                                
                                                                                                                                     .                                                                   
                                                                                                                                                                                                         

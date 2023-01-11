@@ -24,7 +24,7 @@
 |   ##     ##   |       L'oxygène est le 8e élément du tableau périodique des éléments.
 |   ##     ##   |       Il est crucial à la survie, sans oxygène, vous ne pouvez pas respirer !
 |   ##     ##   |
-|    #######    |       Il se consomme au fur et à mesure que le temps s'écoule.
+|    #######    |       Une unité d'oxygène est consommée toutes les 12 heures.
 |_______________|
 
 
@@ -32,3 +32,5 @@
 Selon les planètes, certaines ressources sont accessible depuis l'orbite, d'autres nécessite un atterrisage.
 Plus vous extrairez de ressources sur une planète, plus il sera coûter d'en extraire d'avantage, soyez stratégique !
 Pensez à toujours garder une réserve d'hydrogène pour ne pas vous bloquer en terres inconnues.
+
+                        - Entrée pour continuer -
