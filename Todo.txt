@@ -1,24 +1,24 @@
 V1.0 - NECESSAIRE
 
-progress    - Décomposition
-done        - Volume de Travail
-TODO        - Externalisation et persistance des données            Enregistrer une partie = système, player + enregistrer un score
-TODO        - Clareté du code                                       variable "approached" qui peut porter à confusion entre player et sysobject
-TODO        - Tests                                                 Envie de crever
-done        - Structure de l'archive
-progress    - README
-progress    - Contrôle de saisie                                    Toutes les saisies sont faites en string de toute manière - Erreur pour une chaîne vide dans la saisie de réparation
+progress    - Décomposition					    Certaines fonctionnalités ont étés implémentées en urgences et pourraient être simplifiées, décomposées, etc.
+DONE        - Volume de Travail					     
+progress    - Externalisation et persistance des données            Manque la sauvegarde de partie = sauvegarder le monde et les données du joueur.
+progress    - Clareté du code                                       -
+progress    - Tests                                                 Incomplets, les fonctions les plus simples à tester ont été effectuées.
+DONE        - Structure de l'archive
+DONE        - README
+progress    - Contrôle de saisie                                    Toutes les saisies n'ont pas été testées, elles utilisent cependant toutes des readString(), les risques sont limités.
 
 Gameplay -
-    Terminer la génération de tous les types d'objets actuels (géantes de glaces manquantes)
-    Interraction avec les objets
-    Affichage des données de jeu des planète sur les cartes d'objet
-    Evaluation du coup en temps de certaines actions, relation avec un coup en oxygène
-    Gestion de fin de partie - destruction du vaisseau ou fin d'oxygène
+   Done 	- Terminer la génération de tous les types de corps céleste de base
+   Done		- Interraction avec les objets
+   Done		- Affichage des données de jeu des planète sur les cartes d'objet
+   Done 	- Evaluation du coup en temps de certaines actions, relation avec un coup en oxygène
+   Done		- Gestion de fin de partie - destruction du vaisseau, fin d'oxygène, fin d'hydrogène (proche d'une planète sur laquelle il est possible d'atterrir ou non = fin différente)
 
 
 Pédagogique - Ajout de données
-    Données pour les différents types d'objets sur leurs cartes.
+    Données de base pour les différents types d'objets sur leurs cartes. (description)
 
 
 _____________________________________________________________________________________________________________________________
@@ -26,12 +26,11 @@ ________________________________________________________________________________
 V1.1
 
 Gameplay -
-    Accès à un wiki depuis le menu de jeu.
+    Accès à un wiki depuis le menu de jeu, vocabulaire, description des objets, etc.
 
 Pédagogique -
     Lorsque le joueur visite un objet qu'il n'a pas visité auparavant, il débloque une portion d'information aléatoire concernant le type d'objet.
     Le joueur a maintenant pour objectif secondaire de compléter le codex.
-
 
 
 
@@ -46,11 +45,11 @@ Gameplay -
 
 V1.3
 Gameplay -
-    Amélioration de la console d'administrateur permettant de modifier la grille de jeu, et d'en enregistrer une ~= éditeur de système en run time.
+    Permettre d'exporter un système depuis les commandes admin. Couplées aux commandes relatives aux objets, cela permet d'avoir un "éditeur de monde".
 
 Pédagogique -
     Partie du codex interactives - sous la forme d'une instance de système dans lequel le joueur peut se déplacer librement, et qui représente un système et ses informations.
-    Par exemple, le système solaire, justement créé et enregistré au préalable via l'éditeur système.
+    Par exemple, le système solaire, justement créé et enregistré au préalable via l'éditeur de monde.
 
 
 
@@ -61,7 +60,7 @@ ________________________________________________________________________________
 V2.0
 Gameplay -
     Grille infinies - nécessite de réadapter l'affichage de la grille pour adapter les rangs de coordonnées à la position,
-    et de générer de nouvelles parties de grille selon la position du joueur.
+    de considérer les input de coordonnées différemment, et de générer de nouvelles parties de grille selon la position du joueur.
 
 
 
@@ -69,3 +68,21 @@ Gameplay -
 V2.1
 Gameplay -
     Objectif principal - atteindre la terre le plus rapidement possible.
+
+
+V2.2
+Gameplay -
+    Objets de Lore - Des objets unique dans le monde avec lesquels le joueur peu en apprendre d'avantage sur sa situation, son passé, etc.
+
+
+_____________________________________________________________________________________________________________________________
+
+V3.0
+Gameplay
+    Génération plus réaliste du monde - système
+    Générer des étoiles, puis générer des planètes autour de ces étoiles.
+
+V3.1
+Gameplay
+    Tous les objets sont maintenant en mouvements. Les astéroïdes et comètes ont toujours une trajectoire libre, mais les planètes
+    sont générées avec une orbite donnée.

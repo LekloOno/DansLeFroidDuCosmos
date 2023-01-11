@@ -813,7 +813,10 @@ class Main extends Program {
         o.type = _type;
         o.mass = _mass;
         o.availableResources = _availableResources;
-        o.baseResources = _availableResources;
+        o.baseResources = new int[3];
+        for(int i = 0; i<3; i++){
+            o.baseResources[i] = _availableResources[i];
+        }
 
         if(_mass <= 0){
             o.landingCost = -1;
@@ -1221,6 +1224,7 @@ class Main extends Program {
                     oResH = "0";
                     oResO = "0";
                 } else if(o.approached){
+                    println(o.baseResources[0]);
                     oResFE = o.availableResources[0] + "/" + o.baseResources[0];
                     oResH = o.availableResources[1] + "/" + o.baseResources[1];
                     oResO = o.availableResources[2] + "/" + o.baseResources[2];
@@ -1853,14 +1857,16 @@ class Main extends Program {
                             player.ownedResources[0] = cmd_value;
                             logCache = "Iron" + logCache;
                         } else if(equals(cmd_param, CMDP_HYDROGEN)){
-                            PLAYER_consumeHydrogen(player,player.ownedResources[1]-cmd_value);
                             logCache = "Hydrogen" + logCache;
+                            PLAYER_consumeHydrogen(player,player.ownedResources[1]-cmd_value);
                         } else if(equals(cmd_param, CMDP_OXYGEN)){
                             player.ownedResources[2] = cmd_value;
                             logCache = "Oxygen" + logCache;
                         } else if(equals(cmd_param, CMDP_HPS)){
-                            player.ship.HPs = cmd_value;
                             logCache = "HPs" + logCache;
+                            if(!SHIP_InflictDamage(player.ship, player.ship.HPs-cmd_value)){
+                                GMP_endGame(2);
+                            }
                         } else if(equals(cmd_param, CMDP_MAXHPS)){
                             player.ship.MaxHPs = cmd_value;
                             logCache = "MaxHPs" + logCache;
@@ -1880,8 +1886,8 @@ class Main extends Program {
                             player.pos.x += cmd_value;
                             logCache = "Xpos" + logCache;
                         } else if(equals(cmd_param, "time")){
-                            GMP_spendTime(cmd_value-game_time);
                             logCache = "Time" + logCache;
+                            GMP_spendTime(cmd_value-game_time);
                         } else {
                             logCache = "";
                         }

@@ -11,15 +11,11 @@ Vous n'avez plus aucun souvenir de votre périple.
 Vous devrez gérer intelligemment vos resources, et progresser dans l'espace avec stratégie pour parvenir à survivre, en apprendre un peu plus sur ce qu'il s'est passé, et peut-être retrouver la civilisation.
 
 
-
-Pour l'instant, seul la programation du moteur d'affichage de fenêtre ascii, et la génération de système a été complété.
-Ce que vous observerez en lançant le programme est un test de l'affichage de fenêtre réalisé avec 4 systèmes générés.
-A terme, ce système d'affichage servira à afficher différents module d'hud, à savoir le système en haut à gauche, puis des module d'information, d'actions et d'historique.
-
-Il reste encore à gérer les différentes interactions, et la progression dans le jeu.
+La v1.0 est presque complètement atteinte, il manque beaucoup de fonctionnalités supplémentaires - Voir "Todo.txt" pour plus d'informations.
 
 
 Des captures d'écran illustrant le fonctionnement du logiciel sont proposées dans le répertoire shots.
+Des manuels d'aide sont disponible dans le réportoire ressources/man, pour mieux comprendre certaines fonctionnalités.
 
 
 # Utilisation de Dans le froid du cosmos
