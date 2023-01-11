@@ -469,7 +469,7 @@ class Main extends Program {
     }
 
     boolean PLAYER_land(Player p, SysObject o){
-        int cost = SHIP_hydrogenRequired(o);
+        int cost = o.landingCost;
 
         boolean canLand = cost <= p.ownedResources[1];
         if(canLand){
@@ -485,10 +485,12 @@ class Main extends Program {
 
         boolean canExtract = cost <= p.ownedResources[1];
         if(canExtract){
-            GMP_spendTime(intDivToCeil(cost+1, 4));
+            GMP_spendTime(intDivToCeil(cost, 4)+1);
             PLAYER_consumeHydrogen(p, cost);
             if(o.type.type == ObjectLabel.Star){
-                SHIP_InflictDamage(p.ship, cost*2 + 1);
+                if(!SHIP_InflictDamage(p.ship, cost*2 + 1)){
+                    GMP_endGame(2);
+                }
             }
             p.ownedResources[resIdx] += res;
             o.availableResources[resIdx] -= res;
@@ -921,102 +923,6 @@ class Main extends Program {
 
     //#endregion
 
-    void SO_interaction(SysObject o, Player p){
-        int input = 0;
-        while(input != 0){
-            input = readInt();
-            SO_mainMenu(o, p, input);
-        }
-    }
-
-    void SO_mainMenu(SysObject o, Player p, int input){
-        //Process the action
-        /*
-        0. Save & Quit
-        1. Nouvelle Destination
-        2. Nouvelle Observation
-        3. Entrer en orbite
-        4. Gestion du vaisseau
-        (5. Quitter le système)
-
-        1 -
-        Entrez les coordonnées de destination. (x:y)
-            
-            Le déplacement en (x:y) consommera xxxx d'hydrogène.
-            Confirmer ? (y/n - oui/non)
-                        Move
-            
-        2 -
-        Entrez les coordonnées d'observation. (x:y)
-
-
-        3 - Set the approached bool to true
-            
-            0. Quitter l'orbite
-            1. Atterrir
-            (2. Extraction de fer) // Si étoile
-            (3. Extraction d'hydrogène) // Si objet à hydrogène
-
-
-                1 -
-                Le décolage et l'aterrisage consommeront xxxx d'hydrogène
-                Confirmer ? (y/n - oui/non)
-                    Si landable -
-
-                    0. Décoler
-                    1. Extraction de fer
-                    (2. Extraction d'oxygène) // Si planète de glace ou comète
-
-                    Sinon -
-
-                    (Si gazeuse) Alors que vous descendez prudemment dans l'épaisse athmosphère de la planète, vous observez tous les compteurs du vaisseau s'affoler.
-                    La pression monte en flèche, la température impressionante, vous faîtes vite demi-tour avant de ne subir plus de dommages.
-                    Votre vaisseau a subit de lourd dégâts. Il semblerait qu'atterrir sur une géante gazeuse ne soit pas une très bonne idée.
-
-                    (Si étoile) Alors que vous vous approchez de la surface de l'astre flamboyant, vous observez tous les compteurs du vaisseau s'affoler.
-                    La température monte en milliers de degrés, et avant que votre vaisseau ne commençent à fondre, vous vous arrachez à la gravité de l'étoile en catastrophe.
-                    Votre vaisseau a subit de lourd dégâts. Il semblerait qu'atterrir sur une étoile ne soit pas une très bonne idée.
-
-        */
-        
-
-    }
-
-    void SO_extractFE(SysObject o, Player p){
-        boolean SO_FeObject =
-        o.type.type == ObjectLabel.Telluric ||
-        o.type.type == ObjectLabel.Asteroid ||
-        o.type.type == ObjectLabel.Star ||
-        o.type.type == ObjectLabel.Nebula;
-
-
-        if(SO_FeObject && p.nearbySOstatus[1]){
-            //process
-            p.ownedResources[0] = /* processed val*/0;
-            //+ a print of the process
-        }
-    }
-
-    int SO_extractH(SysObject o, Player p){
-        boolean SO_HObject =
-        o.type.type == ObjectLabel.Star ||
-        o.type.type == ObjectLabel.Gasgiant ||
-        o.type.type == ObjectLabel.Icegiant ||
-        o.type.type == ObjectLabel.Comet ||
-        o.type.type == ObjectLabel.Nebula;
-        
-        return -1;
-    }
-
-    int SO_extractO(SysObject o, Player p){
-        boolean SO_OObject =
-        o.type.type == ObjectLabel.Icegiant ||
-        o.type.type == ObjectLabel.Comet ||
-        o.type.type == ObjectLabel.Nebula;
-
-        return -1;
-    }
-
     double SO_computeLandingRisks(ObjectType t, double m){
         //Calculate the landing risks according to the object type t.type and mass
         return -1;
@@ -1028,21 +934,10 @@ class Main extends Program {
     }
 
     int SO_computeLandingCost(ObjectType t, double m){
-        //Compute the landing cost
-        return -1;
+        //Gives the landing cost of an object https://www.desmos.com/calculator/ucxra9uldq
+        return (int)Math.ceil(Math.pow(m/12.0, 4));
     }
 
-    /*
-
-    String[] SO_displayAction(SysObject o, Player p){
-        //
-        return ;
-    }
-
-    String SO_typeToHead(SysObject o){
-        if()
-    }
-    */
     //#endregion
 
     //#region SHIP
@@ -1083,11 +978,6 @@ class Main extends Program {
     int SHIP_hydrogenRequired(double distance){
         //Convert a given distance into a Hydrogen cost
         return  (int)Math.ceil(Math.pow(distance,0.8)*3);
-    }
-
-    int SHIP_hydrogenRequired(SysObject o){
-        //Gives the landing cost of an object https://www.desmos.com/calculator/ucxra9uldq
-        return (int)Math.ceil(Math.pow(o.mass/12.0, 4));
     }
 
     int SHIP_ironRequired(int HPs){
@@ -1229,11 +1119,6 @@ class Main extends Program {
             String empty = "#" + new String(new char[xlen]).replace("\0", " ") + "#";
 
             for(int y = 0; y < length(normalized); y ++){
-                /*
-                int sepLen = 0;
-                for(int x = 0; x<length(normalized[y]); x++){
-                    sepLen += cards[y][x].dimension.x;
-                }*/
                 s += HUD_DisplayCardLine(normalized[y]);
                 s += empty+"\n" + separator + "\n"+empty+"\n";
             }
@@ -2113,7 +1998,7 @@ class Main extends Program {
         }
     }
 
-    final int APPROACH_COST = SHIP_hydrogenRequired(1)/2;
+    final int APPROACH_COST = 2;
 
     void GMP_approach(){
         SysObject o = sys_current[player.pos.y][player.pos.x];
@@ -2160,7 +2045,7 @@ class Main extends Program {
     final int UNLANDABLE_DAMAGE = 20;
 
     void GMP_land(SysObject o){
-        int cost = SHIP_hydrogenRequired(o);
+        int cost = o.landingCost;
         win_botLeft = HUD_confirmLandMenu(cost);
         win_botRight = HUD_Status(new int[]{0, -cost, 0});
 
@@ -2186,6 +2071,8 @@ class Main extends Program {
             } else {
                 GMP_landed(o);
             }
+        } else {
+            GMP_approached(o);
         }
     }
 
@@ -2229,8 +2116,13 @@ class Main extends Program {
             
             int[] previewRes = {0, -extractCost, 0};
             previewRes[resIdx] += extractAmount;
-            win_timePreview = HUD_timePreview(intDivToCeil(extractCost, 4));
-            win_botRight = HUD_Status(previewRes, -extractCost*2 - 1, 0);
+            win_timePreview = HUD_timePreview(intDivToCeil(extractCost, 4)+1);
+            int damage = 0;
+            
+            if(o.type.type == ObjectLabel.Star){
+                damage = -extractCost*2 - 1;
+            }
+            win_botRight = HUD_Status(previewRes, damage, 0);
             win_botLeft = HUD_SOextractConfirmMenu(extractAmount, extractCost);
 
             GMP_displayHUD();
@@ -2555,5 +2447,60 @@ class Main extends Program {
         GMP_mainMenu();
     }
 
+    //#region TESTS
+    void test_hoursToString(){
+        assertTrue(equals(hoursToString(25), "1 jours, 1 heure."));
+        assertTrue(equals(hoursToString(365), "1 années."));
+        assertTrue(equals(hoursToString(390), "1 années, 1 jours, 1 heure."));
+    }
 
+    void test_isNumeric(){
+        assertTrue(isNumeric('1'));
+        assertTrue(isNumeric("1"));
+        assertFalse(isNumeric('a'));
+        assertFalse(isNumeric("123b5"));
+    }
+
+    void test_isCommand(){
+        assertTrue(isCommand(COMMAND_PREFIXES[(int)(random()*length(COMMAND_PREFIXES))]));
+        assertTrue(isCommand(COMMAND_PREFIXES[(int)(random()*length(COMMAND_PREFIXES))]));
+        assertTrue(isCommand(COMMAND_PREFIXES[(int)(random()*length(COMMAND_PREFIXES))]));
+        assertFalse(isCommand("give"));
+    }
+
+    void test_combineArrays(){
+        String[][] testArr = new String[][]{{"a","b","c"},{"d","e","f"}};
+        String[] testArrComb = combineArrays(testArr);
+        for(int i = 0; i<6; i ++){
+            assertTrue(equals(testArr[i/3][i%3], testArrComb[i]));
+        }
+    }
+
+    void test_enlargeArray(){
+        String[] testArr = new String[]{"a","b","c"};
+        String[] testArrEn = enlargeArray(testArr, 5);
+        assertEquals(length(testArrEn), length(testArr) + 5);
+        assertTrue(equals(testArrEn[1],testArr[1])); 
+    }
+
+    void test_INPUT_isValidCoord(){
+        assertTrue(INPUT_isValidCoord("5:1"));
+        assertTrue(INPUT_isValidCoord("5;1"));
+        assertFalse(INPUT_isValidCoord("05:1"));
+        assertFalse(INPUT_isValidCoord("5-1"));
+        assertFalse(INPUT_isValidCoord(":1"));
+        assertFalse(INPUT_isValidCoord("1:"));
+        assertFalse(INPUT_isValidCoord(":"));
+        assertFalse(INPUT_isValidCoord("55"));
+        assertTrue(INPUT_isValidCoord("100;100"));
+        assertFalse(INPUT_isValidCoord("5:-1"));
+    }
+
+    void test_INPUT_inputToVector2(){
+        Vector2 testVec = newVector2(5, 20);
+        assertEquals(testVec.x, INPUT_inputToVector2("5:20").x);
+        assertEquals(testVec.y, INPUT_inputToVector2("5:20").y);
+    }
+
+    //#endregion
 }
