@@ -61,7 +61,7 @@
     .                  .   .              .   .   .   .          .   .   .          .   .   .                      .              .   .                  .              .   .   .              .   .   .
                    .                 *                            .                                .                                    .                             .             *                   
                                                                                                                                                                                                         
-                                                                                          - Entrée pour continuer -                                                                                     
+                                                                               - 1. Nouvelle Partie    2. Charger une partie -                                                                          
                                                 .              .   .                  .   .                                                            .                                                
                                                                                                                                     .                                                                   
                                                                                                                                                                                                         

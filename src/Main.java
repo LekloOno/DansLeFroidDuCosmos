@@ -363,6 +363,15 @@ class Main extends Program {
         return res;
     }
 
+    int totalRes(int[] res){
+        int tot = 0;
+        for(int i = 0; i<3; i++){
+            tot += res[i];
+        }
+
+        return tot;
+    }
+
     //#endregion
 
     //#region NBS   | NEARBY STATUS
@@ -422,6 +431,7 @@ class Main extends Program {
         if(canApproach){
             p.ownedResources[1] -= APPROACH_COST;
             p.nearbySOstatus[0] = true;
+            sys_current[p.pos.y][p.pos.x].approached = true;
         }
         return canApproach;
     }
@@ -436,6 +446,19 @@ class Main extends Program {
             p.nearbySOstatus[1] = true;
         }
         return canLand;
+    }
+
+    boolean PLAYER_extract(Player p, SysObject o, int resIdx, int res){
+        int cost = SO_HcostForResource(o, resIdx, res);
+
+        boolean canExtract = cost <= p.ownedResources[1];
+        if(canExtract){
+            p.ownedResources[1] -= cost;
+            p.ownedResources[resIdx] += res;
+            o.availableResources[resIdx] -= res;
+        }
+
+        return canExtract;
     }
 
     boolean PLAYER_repair(Player p, int Fe){
@@ -533,7 +556,7 @@ class Main extends Program {
                     line += system[y+sysFirstY][x+sysFirstX].type.type.sprite;
                 }
                 else {
-                    line += "x";
+                    line += "#";
                 }
                 line += " ";
             }
@@ -571,19 +594,35 @@ class Main extends Program {
 
         final ObjectType SOT_VOID = newObjectType(
             ObjectLabel.Void,
-            "Le vide ...");
+            "Le vide est une notion abstraite, on parle 'd'ultravide' quand la densité"
+            + " de matière est très faible, c'est à dire qu'il n'y a 'presque' rien."
+            + " C'est cet ultra vide que l'on retrouve dans l'espace, le vide sidéral."
+            + " En réalité, même la matière, ta main, un verre, une table, sont constitués de vide à plus de 99% !");
 
         final ObjectType SOT_TEL = newObjectType(
             ObjectLabel.Telluric,
-            "Une planète tellurique ... ");
+            "Une planète tellurique est une planète constitué majoritairement de roches et de métaux."
+            + " Elles sont très denses, ont une surface solide et souvent peu de satelites."
+            + " -"
+            + " Dans le système solaire, on peut citer par exemple :"
+            + " Mercure, Vénus, Mars, et la Terre !"
+            + " La lune n'est pas une planète, c'est un satellite, en revanche c'est également un corps tellurique, comme Io et Europe, deux satellites (ou 'lune') de Jupiter.");
 
         final ObjectType SOT_GAS = newObjectType(
             ObjectLabel.Gasgiant,
-            "Une planète gazeuse ...");
+            "Une géante gazeuse est une planète constitué majoritairement de gaz hydrogène et d'helium, très volumineuses mais de faible densité."
+            + " Contrairement à ce que l'on peut parfois penser, saturne et ses anneaux n'est pas une exception !"
+            + " Il est très commun pour une planète gazeuse d'arborer des anneaux, mais ils sont parfois moins perceptibles. -"
+            + " Dans le système solaire, on peut citer comme planètes gazeuses : Jupiter, Saturne, Uranus et Neptune.");
 
         final ObjectType SOT_ICE = newObjectType(
             ObjectLabel.Icegiant,
-            "Une géante de glace ...");
+            "Les planètes et lunes de glaces sont des corps céleste majoritairement composés de méthane, d'amoniac ou d'EAU !"
+            + " Les lunes de glaces en particuliers suscitent beaucoup l'intérêt des scientifiques ces dernières années."
+            + " Encélades, une petite lune de Saturne, est géologiquement active, et pourrait abriter un océan d'eau liquide sous sa croûte de glace."
+            + " Un espoir de peut-être y trouver de la vie extra-terrestre ! -"
+            + " Dans notre système solaire, on peut citer en géante de glaces Neptune et Uranus, (aussi géantes gazeuse). -"
+            + " Comme lune de glaces, on peut citer Encélade, lune de Saturne, ainsi que Europe, Ganymède, Callisto et Io, lunes de Jupiter.");
 
         final ObjectType SOT_AST = newObjectType(
             ObjectLabel.Asteroid,
@@ -599,7 +638,9 @@ class Main extends Program {
 
         final ObjectType SOT_STA = newObjectType(
             ObjectLabel.Star,
-            "Une étoile ...");
+            "Une étoile est un objet très massif, qui émet de la lumière par 'réactions nucléaire', ou qui était dans cet état plus tôt dans son cycle de vie."
+            + " Ce sont parmis les objets les plus grands de l'univers, et c'est autour d'eux que s'organisent des systèmes stellaire, comme le notre, le système solaire."
+            + " Notre système s'appelle système 'Solaire' car les objets de ce système, comme la Terre, gravitent autour du 'Soleil' !");
         //#endregion 
 
     //#endregion
@@ -645,8 +686,8 @@ class Main extends Program {
         22,                     //Based on Kepler-138d
         27.2,                   //Based on Jupiter
         0.3,
-        newResources(0, 10, 0),
-        newResources(0, 30, 0)
+        newResources(0, 20, 0),
+        newResources(0, 50, 0)
     );
     //#endregion
     //#region Ice Giant
@@ -654,8 +695,8 @@ class Main extends Program {
         15,
         26,
         0.35,
-        newResources(1, 6, 3),
-        newResources(5, 26, 13)
+        newResources(1, 12, 6),
+        newResources(5, 36, 18)
     );
         //hydrogen is just the double of oxygen
     //#endregion
@@ -691,8 +732,8 @@ class Main extends Program {
         29,
         32,
         1.5,
-        newResources(10, 15, 0),
-        newResources(40, 50, 0)
+        newResources(10, 25, 0),
+        newResources(40, 100, 0)
     );
     //#endregion
 
@@ -718,6 +759,7 @@ class Main extends Program {
         o.type = _type;
         o.mass = _mass;
         o.availableResources = _availableResources;
+        o.baseResources = _availableResources;
 
         if(_mass <= 0){
             o.landingCost = -1;
@@ -987,7 +1029,7 @@ class Main extends Program {
 
     int SHIP_hydrogenRequired(double distance){
         //Convert a given distance into a Hydrogen cost
-        return  (int)Math.ceil(Math.pow(distance,0.8)*4);
+        return  (int)Math.ceil(Math.pow(distance,0.8)*3);
     }
 
     int SHIP_hydrogenRequired(SysObject o){
@@ -1201,7 +1243,7 @@ class Main extends Program {
         //#endregion
 
         //#region SYSTEM OBJECT
-        final int HUD_INFOCARD_LENGTH = 50;
+        final int HUD_INFOCARD_LENGTH = 60;
         final int HUD_INFOCARD_HEIGHT = 20;
 
         Card HUD_SO_displayInfosCard(SysObject o, Player p, boolean select, Vector2 pos){
@@ -1211,16 +1253,43 @@ class Main extends Program {
             if(!select || VECTOR2_distance(p.pos, pos) <= p.ship.SightRange){
                 cardSize = newVector2(HUD_INFOCARD_LENGTH, HUD_INFOCARD_HEIGHT);
                 lines[0] = HUD_SO_displayCardHead(o, p, select, pos);
-
-                int i = 1;
-                while(i<HUD_INFOCARD_HEIGHT && ((i-1)*HUD_INFOCARD_LENGTH) < length(o.type.description)){
-                    lines[i] = substring(o.type.description, (i-1)*HUD_INFOCARD_LENGTH, Math.min(i*HUD_INFOCARD_LENGTH, length(o.type.description)));
+                lines[1] = "";
+                int i = 2;
+                while(i<HUD_INFOCARD_HEIGHT && ((i-2)*HUD_INFOCARD_LENGTH) < length(o.type.description)){
+                    lines[i] = substring(o.type.description, (i-2)*HUD_INFOCARD_LENGTH, Math.min(i*HUD_INFOCARD_LENGTH, length(o.type.description)));
                     i++;
                 }
-                while(i<HUD_INFOCARD_HEIGHT){
+                while(i<HUD_INFOCARD_HEIGHT-5){
                     lines[i] = "";
                     i++;
                 }
+                String oResFE = "";
+                String oResH = "";
+                String oResO = "";
+                lines[i] = "Ressources du corps célèste - ";
+                lines[i+1] = "";
+                if(o.type.type == ObjectLabel.Void){
+                    oResFE = "0";
+                    oResH = "0";
+                    oResO = "0";
+                } else if(o.approached){
+                    oResFE = o.availableResources[0] + "/" + o.baseResources[0];
+                    oResH = o.availableResources[1] + "/" + o.baseResources[1];
+                    oResO = o.availableResources[2] + "/" + o.baseResources[2];
+                } else if(o.visited) {
+                    int oAvgRes = totalRes(o.availableResources)/3;
+                    oResFE = o.availableResources[0] > oAvgRes && oAvgRes != 0 ? "++" : "?";
+                    oResH = o.availableResources[1] > oAvgRes && oAvgRes != 0 ? "++" : "?";
+                    oResO = o.availableResources[2] > oAvgRes && oAvgRes != 0 ? "++" : "?";
+                } else {
+                    oResFE = "?";
+                    oResH = "?";
+                    oResO = "?";
+                }
+                lines[i+2] = setAsTableLine(new String[]{"Fer :", oResFE, STATUS_UNIT}, STATUS_COLWIDTH);
+                lines[i+3] = setAsTableLine(new String[]{"Hydrogène :", oResH, STATUS_UNIT}, STATUS_COLWIDTH);
+                lines[i+4] = setAsTableLine(new String[]{"Oxygène :", oResO, STATUS_UNIT}, STATUS_COLWIDTH);
+                
             } else {
                 lines = new String[]{"Cible hors de portée du télescope."};
                 cardSize = newVector2(HUD_INFOCARD_LENGTH, 1);
@@ -1353,14 +1422,35 @@ class Main extends Program {
             String[] actions = new String[]{
                 player.nearbySOstatus[0] ? "Quitter L'orbite" : "-",
                 player.nearbySOstatus[1] ? "Décoler" : "Atterrir",
-                (player.nearbySOstatus[0] && isIn(unlandable, o.type.type)) || player.nearbySOstatus[1] && o.type.type == ObjectLabel.Icegiant ? "Extraire de l'hydrogène" : "-",
-                (player.nearbySOstatus[1] && o.availableResources[0]>0) || o.type.type == ObjectLabel.Star ? "Extraire du fer" : "-",
+                (player.nearbySOstatus[0] && isIn(unlandable, o.type.type) && o.availableResources[1]>0) || player.nearbySOstatus[1] && o.availableResources[1]>0 ? "Extraire de l'hydrogène" : "-",
+                (player.nearbySOstatus[1] && o.availableResources[0]>0) || o.type.type == ObjectLabel.Star && o.availableResources[0]>0 ? "Extraire du fer" : "-",
                 player.nearbySOstatus[1] && o.availableResources[2]>0 ? "Extraire de l'oxygène" : "-"
             };
 
             println((player.nearbySOstatus[0]) + " && " + isIn(unlandable, o.type.type) + " || " + player.nearbySOstatus[1] + " && " + (o.type.type == ObjectLabel.Icegiant));
 
             return HUD_menuCard(actions, "- Entrez le numéros de l'action à faire -");
+        }
+
+        Card HUD_SOextractMenu(int max){
+            String[] lines = new String[]{
+                " Indiquez le montant de ressources à extraire.",
+                " Notez que plus la quantité de ressource à extraire est élevée",
+                " Plus l'extraction sera coûteuse en hydrogène.",
+                " Exemple :",
+                "Extraire 20 unités de ressources sur une planète qui en contient",
+                "20 de base coûtera 22 d'hydrogène, alors que n'en extraire que",
+                "10 coûtera 5 d'hydrogène.",
+                "",
+                "",
+                "- Entrez les ressources à extraire (entre 0 et " + max + " )-"
+            };
+
+            return newCard(lines, newVector2(HUD_MENU_LENGTH, length(lines)), true);
+        }
+        
+        Card HUD_SOextractConfirmMenu(int extract, int cost){
+            return HUD_confirmMenu("- Vous allez extraire " + extract + " unités en consommant " + cost + " d'hydrogène -");
         }
 
         Card HUD_triedToLandUnlandable(SysObject o){
@@ -1400,7 +1490,7 @@ class Main extends Program {
         Card HUD_insufficientHydrogen(int cost){
             String[] lines = new String[]{
                 "Hydrogène insuffisant.",
-                "Le trajet nécessite " + cost + " unités d'hydrogène.",
+                "L'action nécessite " + cost + " unités d'hydrogène.",
                 "-",
                 "Annulation .."
             };
@@ -1577,7 +1667,7 @@ class Main extends Program {
             //#endregion
 
             String[] lines = new String[]{
-                "Resources -",
+                "Ressources -",
                 setAsTableLine(new String[]{"Fer :", res[0], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Hydrogène :", res[1], STATUS_UNIT}, STATUS_COLWIDTH),
                 setAsTableLine(new String[]{"Oxygène :", res[2], STATUS_UNIT}, STATUS_COLWIDTH),
@@ -1851,12 +1941,17 @@ class Main extends Program {
                             logCache = "";
                         }
                     }
-
+                    win_botRight = HUD_Status();
+                    win_topLeft = SYS_playerVisionToCard(sys_current, player);
+                    win_topRight = HUD_SO_displayInfosCard(sys_current[player.pos.y][player.pos.x], player);
                     GMP_adminConsoleSetCache();
                 }
             }
         } else if(equals(params[0], "gen")){
             GMP_adminConsoleGEN(params);
+
+            win_topLeft = SYS_playerVisionToCard(sys_current, player);
+            win_topRight = HUD_SO_displayInfosCard(sys_current[player.pos.y][player.pos.x], player);
         }
     }
 
@@ -1968,6 +2063,7 @@ class Main extends Program {
     }
 
     void GMP_approached(SysObject o){
+        win_topRight = HUD_SO_displayInfosCard(o, player);
         win_botRight = HUD_Status();
         win_botLeft = HUD_interactObjMenu(o);
         GMP_displayHUD();
@@ -1976,9 +2072,11 @@ class Main extends Program {
 
         if(equals(input, "1")){
             GMP_land(o);
-        } else if(equals(input, "2") && isIn(unlandable, o.type.type)) {
-            //GMP_extract(o);
-        } else if(isCommand(input)){
+        } else if(equals(input, "2") && isIn(unlandable, o.type.type) && o.availableResources[1]>0) {
+            GMP_extract(o, 1);
+        } else if(equals(input, "3") && isIn(unlandable, o.type.type) && o.availableResources[0]>0) {
+            GMP_extract(o, 0);
+        } else if(!equals(input, "0") || isCommand(input)){
             GMP_approached(o);
         }
     }
@@ -2026,13 +2124,61 @@ class Main extends Program {
             player.nearbySOstatus[0] = true;
             player.nearbySOstatus[1] = false;
             GMP_approached(o);
+        } else if(equals(input, "2") && o.availableResources[1]>0) {
+            GMP_extract(o, 1);
         } else if(equals(input, "3") && o.availableResources[0]>0) {
-            //GMP_extractFE(o);
+            GMP_extract(o, 0);
         } else if(equals(input, "4") && o.availableResources[2]>0) {
-            //GMP_extractO(o);
+            GMP_extract(o, 2);
         } else {
             GMP_landed(o);
         }
+    }
+
+    int SO_HcostForResource(SysObject o, int resIdx, int res){
+        //The more the player extracts resources, the more expansive it gets. + an object with more base resources allows for easier extraction.
+        println(o.baseResources[resIdx]);
+        println(res);
+        return (int)(Math.pow(((o.baseResources[resIdx]-o.availableResources[resIdx]+res)*1.0)/o.baseResources[resIdx]*1.0,2)*Math.pow(o.baseResources[resIdx], 0.5)*5);
+    }
+
+    void GMP_extract(SysObject o, int resIdx){
+        win_botLeft = HUD_SOextractMenu(o.baseResources[resIdx]);
+
+        GMP_displayHUD();
+
+        input = readString();
+        if(isNumeric(input)){
+            int extractAmount = Integer.parseInt(input);
+            extractAmount = Math.min(Math.min(extractAmount, player.ship.Storage - totalRes(player.ownedResources)), o.availableResources[resIdx]);
+            int extractCost = SO_HcostForResource(o, resIdx, extractAmount);
+            
+            int[] previewRes = {0, -extractCost, 0};
+            previewRes[resIdx] += extractAmount;
+            win_botRight = HUD_Status(previewRes);
+            win_botLeft = HUD_SOextractConfirmMenu(extractAmount, extractCost);
+
+            GMP_displayHUD();
+
+            input = readString();
+            if(confirm(input)){
+                if(!PLAYER_extract(player, o, resIdx, extractAmount)){
+                    win_botLeft = HUD_insufficientHydrogen(extractCost);
+                    GMP_displayHUD();
+                    waitSeconds(TEMPWINDOW);
+                    GMP_extract(o, resIdx);
+                }
+            }
+        } else if(isCommand(input)){
+            GMP_extract(o, resIdx);
+        }
+
+        if(player.nearbySOstatus[0]){
+            GMP_approached(o);
+        } else if(player.nearbySOstatus[1]){
+            GMP_landed(o);
+        }
+        
     }
 
     //#region Ship Management
@@ -2166,6 +2312,32 @@ class Main extends Program {
         logCache = "";
     }
 
+    void GMP_newGame(){
+        println("Entrez votre nom de joueur : ");
+        String newName = readString();
+        Player newPlayer = initPlayer(newName, newVector2(20, 20));
+        newPlayer.ship.HPs = 50;
+        File f = newFile("../ressources/intro.txt");
+        while(ready(f)){
+            println(readLine(f));
+        }
+        readString();
+        f = newFile("../ressources/howToPlay.txt");
+        while(ready(f)){
+            println(readLine(f));
+        }
+        readString();
+        GMP_initGame(newPlayer, equals(newName, "admin"), SYS_generateSystem());
+    }
+
+    void GMP_initGame(Player p, boolean adminSession, SysObject[][] system){
+        player = p;
+        isAdmin = adminSession;
+        sys_current = system; 
+        sys_current[p.pos.y][p.pos.x].visited = true;
+        GMP_system();
+    }
+
     //#endregion
 
     //#region Game global variables
@@ -2217,15 +2389,18 @@ class Main extends Program {
         while(ready(f)){
             println(readLine(f));
         }
-        readString();
+        input = readString();
         print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        println("Entrez votre nom de joueur : ");
-        player = initPlayer(readString(), newVector2(20, 16));
-        isAdmin = equals(player.name, "admin");
-        player.ship.HPs = 50;
-        sys_current = SYS_generateSystem();
-        GMP_system();
-        readInt();
+        if(equals(input, "1")){
+            /* 
+            println("Entrez votre nom de joueur : ");
+            player = initPlayer(readString(), newVector2(20, 16));
+            isAdmin = equals(player.name, "admin");
+            player.ship.HPs = 50;
+            sys_current = SYS_generateSystem();
+            GMP_system();*/
+            GMP_newGame();
+        }
     }
 
 

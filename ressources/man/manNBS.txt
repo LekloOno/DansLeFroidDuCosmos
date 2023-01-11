@@ -6,6 +6,6 @@ Nearby status represents the current status of a player regarding the system obj
     Such as -
     [0] = approached ?
     [1] = landed ?                requires [0]
-    [2] = H can be collected ?    requires [0]
-    [3] = Fe can be collected ?   requires [1]
-    [4] = O can be collected ?    requires [1]
+    [2] = H can be collected ?    requires [0]          --Obsolete
+    [3] = Fe can be collected ?   requires [1]          --Obsolete
+    [4] = O can be collected ?    requires [1]          --Obsolete

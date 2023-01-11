@@ -12,4 +12,5 @@ class SysObject {
     double landingRisks;            //Not an explicit value.
     double approachRisks;           //Not an explicit value.
     int[] availableResources;       //See region RES | Resources in Main.java       The contained resources of the object.
+    int[] baseResources;
 }

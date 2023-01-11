@@ -1,0 +1,34 @@
+            Gestion de ressources -
+
+ _______________
+| 1             |       L'hydrogène -
+|    ##   ##    |       
+|    ##   ##    |       L'hydrogène est le premier élément du 'tableau périodique des éléments'.
+|    #######    |       Il vous sera nécessaire pour vous déplacer, entrer en orbite, atterrir, et extraire des ressources.
+|    ##   ##    |
+|    ##   ##    |       Si vous tombez à court d'hydrogène, vous serez bloqué, perdu au milieu du cosmos.
+|_______________|
+
+ _______________
+| 26            |       Le fer -
+|    ########   |       
+|    ##         |       Le fer est le 26e élément du tableau périodique des éléments.
+|    #####      |       Il vous sera nécessaire pour réparer et améliorer votre vaisseau.
+|    ##         |
+|    ##         |
+|_______________|
+
+ _______________
+| 8             |       L'oxygène -
+|    #######    |
+|   ##     ##   |       L'oxygène est le 8e élément du tableau périodique des éléments.
+|   ##     ##   |       Il est crucial à la survie, sans oxygène, vous ne pouvez pas respirer !
+|   ##     ##   |
+|    #######    |       Il se consomme au fur et à mesure que le temps s'écoule.
+|_______________|
+
+
+
+Selon les planètes, certaines ressources sont accessible depuis l'orbite, d'autres nécessite un atterrisage.
+Plus vous extrairez de ressources sur une planète, plus il sera coûter d'en extraire d'avantage, soyez stratégique !
+Pensez à toujours garder une réserve d'hydrogène pour ne pas vous bloquer en terres inconnues.
